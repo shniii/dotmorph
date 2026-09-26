@@ -6,6 +6,7 @@ import { CodeBlock } from './components/CodeBlock';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Segmented } from './components/Controls';
 import { GitHubIcon, LogoMark, NpmIcon, XIcon } from './components/Icons';
+import avatar from './assets/shnyar.webp';
 
 const GITHUB = 'https://github.com/shniii/dotmorph';
 const NPM = 'https://www.npmjs.com/package/dotmorph';
@@ -89,9 +90,11 @@ export default function App() {
       </section>
 
       <footer className="footer">
-        Made by{' '}
-        <a href={AUTHOR_X} target="_blank" rel="noreferrer">
-          Shnyar
+        <a className="footer__author" href={AUTHOR_X} target="_blank" rel="noreferrer">
+          <img className="footer__avatar" src={avatar} alt="" width={28} height={28} loading="lazy" decoding="async" />
+          <span>
+            Made by <strong>Shnyar</strong>
+          </span>
         </a>
         <div className="footer__links">
           <a href={GITHUB} target="_blank" rel="noreferrer">

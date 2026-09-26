@@ -533,8 +533,47 @@ a {
   text-decoration: underline;
 }
 
+.footer .footer__author {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+}
+
+.footer .footer__author:hover {
+  text-decoration: none;
+}
+
+.footer__author strong {
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.footer__author:hover strong {
+  text-decoration: underline;
+}
+
+.footer__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px var(--border-2);
+  transition: transform 0.2s ease;
+}
+
+.footer__author:hover .footer__avatar {
+  transform: scale(1.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .footer__avatar {
+    transition: none;
+  }
+}
+
 .footer__links {
-  margin-top: 8px;
+  margin-top: 10px;
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
