@@ -1,0 +1,15 @@
+name: Feature request
+description: Suggest an idea, a new parameter, a palette or a shape.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: Describe the use case first, then the change you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered

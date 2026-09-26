@@ -1,0 +1,40 @@
+name: Bug report
+description: Something renders wrong, throws, or behaves unexpectedly.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! For security problems, please use a [private advisory](https://github.com/shniii/dotmorph/security/advisories/new) instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead? Screenshots or a short clip help a lot.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: Minimal code or steps. A StackBlitz or CodeSandbox link is ideal.
+      render: tsx
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: dotmorph version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: three
+    attributes:
+      label: three.js version
+      placeholder: "0.183.0"
+  - type: input
+    id: env
+    attributes:
+      label: Browser, OS and framework
+      placeholder: "Chrome 140, macOS 15, Next.js 16"

@@ -1,0 +1,35 @@
+{
+  "name": "dotmorph-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "site"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w site --",
+    "build": "npm run build -w dotmorph && npm run build -w site",
+    "build:lib": "npm run build -w dotmorph",
+    "typecheck": "npm run typecheck -w dotmorph && npm run typecheck -w site",
+    "preview": "npm run preview -w site",
+    "lint:package": "publint packages/dotmorph",
+    "release:check": "npm run typecheck && npm run build:lib && npm run lint:package && npm pack -w dotmorph --dry-run"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@types/three": "^0.183.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "publint": "^0.3.24",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "three": "^0.183.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

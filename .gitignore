@@ -1,0 +1,18 @@
+node_modules
+dist
+dist-ssr
+*.local
+*.log
+.DS_Store
+captures/
+
+# scratch folders from doc/code checks
+.doccheck-tmp/
+
+# local env, deploy links, packed tarballs, tooling
+.env
+.env.*
+!.env.example
+.vercel
+*.tgz
+.claude/

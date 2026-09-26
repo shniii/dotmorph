@@ -1,0 +1,23 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    # Minor and patch updates are grouped; major versions arrive as separate PRs.
+    groups:
+      dev-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+      runtime:
+        dependency-type: production
+        update-types: [minor, patch]
+    ignore:
+      # Track the Node major in .nvmrc, not the newest @types/node.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

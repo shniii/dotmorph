@@ -1,0 +1,73 @@
+{
+  "name": "dotmorph",
+  "version": "0.1.0",
+  "description": "Dots that morph between shapes through a swirling cloud. WebGL on three.js, with a React component.",
+  "type": "module",
+  "license": "MIT",
+  "author": {
+    "name": "Shnyar",
+    "url": "https://x.com/shnulli"
+  },
+  "homepage": "https://dotmorph.shni.me",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shniii/dotmorph.git",
+    "directory": "packages/dotmorph"
+  },
+  "bugs": {
+    "url": "https://github.com/shniii/dotmorph/issues"
+  },
+  "keywords": [
+    "three",
+    "threejs",
+    "webgl",
+    "webgl2",
+    "particles",
+    "dots",
+    "morph",
+    "transition",
+    "animation",
+    "generative",
+    "hero",
+    "react"
+  ],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js",
+      "default": "./dist/react.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.build.json && node scripts/use-client.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run typecheck && npm run build"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "three": ">=0.163.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

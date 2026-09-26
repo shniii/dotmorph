@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["vite/client", "node"],
+    "jsx": "react-jsx",
+    "paths": {
+      "dotmorph": ["../packages/dotmorph/src/index.ts"],
+      "dotmorph/react": ["../packages/dotmorph/src/react.tsx"]
+    }
+  },
+  "include": ["src", "vite.config.ts"]
+}
