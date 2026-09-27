@@ -14,11 +14,12 @@ All notable changes to `dotmorph` are documented here. The format follows
   - The burst and the wave part around the pointer on springs. The clearing
     holds while the pointer rests. The tips spring back when it moves on or
     leaves.
-    - Burst: tips are pushed away from the pointer, and tips past the pointer
-      along their ray also outward along it, the farther past the more, leaving a clearing of about a tenth of the canvas
-      height. Each tip's damping follows how hard it is pushed right now, from
-      `hoverRelease` (no push) up to `hoverDamping` (full push), so a held
-      clearing settles calmly and tips the pointer lets go of wobble back.
+    - Burst: tips are pushed away from the pointer. Tips that lie past the
+      pointer along their ray are also pushed outward along it, more the
+      farther past they are. This leaves a clearing of about a tenth of the
+      canvas height. Each tip's damping follows how hard it is pushed right
+      now, from `hoverRelease` (no push) up to `hoverDamping` (full push), so a
+      held clearing settles calmly and released tips wobble back.
     - Wave: distances are measured on the canvas in canvas heights, so the
       reach is round on screen and the same for near and far stems. The push
       fades on a smooth bell. Stems are stiffer against leaning than against
@@ -52,6 +53,10 @@ All notable changes to `dotmorph` are documented here. The format follows
 - Nothing moves before the pointer first enters the canvas. A shape that comes
   back after a morph is handed the pointer's current position, or told that it
   has left, so it never holds a dent where nobody points.
+- `engine.scene` is now typed as a plain `Scene`, so the published types work
+  with every `@types/three` in the peer range.
+- The site and the development setup now use three.js r186 and TypeScript 7.
+  three.js r184 and newer need Safari 16.4+, Chrome 94+ and Firefox 93+.
 - For shape authors: `Shape` gains the `ownsHover` flag and the hover hooks
   `pointerMove`, `pointerLeave`, `updateHover` and `resetHover`.
   `ShapeContext` gains `camera`. The shader templates gain the `uHoverGain`

@@ -118,7 +118,7 @@ export class DotMorphEngine {
   readonly canvas: HTMLCanvasElement;
   readonly renderer: WebGLRenderer;
   readonly camera: PerspectiveCamera;
-  readonly scene = new Scene();
+  readonly scene: Scene = new Scene();
   readonly settings: EngineSettings;
   readonly cloud: CloudSettings;
   readonly shapes: { burst: BurstShape; globe: GlobeShape; wave: WaveShape; fan: FanShape };

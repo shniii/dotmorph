@@ -93,7 +93,7 @@ Each dot knows two places: its spot in the current shape, computed on the GPU ev
 
 ## Browser support
 
-Any browser with WebGL 2: current Chrome, Edge, Firefox and Safari 15+. Use `fallback` for the rest.
+Any browser with WebGL 2: current Chrome, Edge, Firefox and Safari 15+. three.js r184 and newer need Safari 16.4+, Chrome 94+ and Firefox 93+. Use `fallback` for the rest.
 
 ## License
 
