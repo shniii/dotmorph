@@ -206,7 +206,7 @@ import { paletteBackground, type Palette } from 'dotmorph';
 const top = '#ffd6a5';
 const bottom = '#ff4d6d';
 
-export const dusk: Palette = {
+export const coral: Palette = {
   top,
   bottom,
   rampEnd: 0.9,
@@ -413,14 +413,14 @@ The hidden canvas still gets an engine, but with motion off it draws a single fr
 
 ## Vanilla JavaScript with resize and cleanup
 
-The engine doesn't watch the page for you. This helper does most of what `DotMorph` does: it follows the canvas size, pauses off screen, respects reduced motion, falls back without WebGL 2, and cleans up.
+The engine doesn't watch the page for you. This helper does most of what `DotMorph` does: it follows the canvas size, pauses off screen, respects reduced motion, falls back without WebGL 2, and cleans up. Like `DotMorph`, it pauses hover a little earlier than the loop, once less than half of the canvas shows.
 
 ```ts
 import { DotMorphEngine, PALETTES, type ShapeName } from 'dotmorph';
 
 export function mountDotMorph(container: HTMLElement, shape: ShapeName = 'burst') {
   const canvas = document.createElement('canvas');
-  canvas.style.cssText = 'display:block;width:100%;height:100%;touch-action:pan-y';
+  canvas.style.cssText = 'display:block;width:100%;height:100%';
   canvas.setAttribute('aria-hidden', 'true');
   container.style.background = PALETTES.ocean.background ?? '';
   container.append(canvas); // in the page first, so the engine can read its size
@@ -445,10 +445,16 @@ export function mountDotMorph(container: HTMLElement, shape: ShapeName = 'burst'
   const resizeObserver = new ResizeObserver(() => engine.resize());
   resizeObserver.observe(canvas);
 
-  const visibility = new IntersectionObserver(([entry]) => {
-    onScreen = entry.isIntersecting;
-    update();
-  });
+  const visibility = new IntersectionObserver(
+    ([entry]) => {
+      onScreen = entry.isIntersecting;
+      // Pause hover once less than half of the canvas shows (half the viewport, for a canvas taller than it).
+      const room = Math.min(entry.boundingClientRect.height, entry.rootBounds?.height ?? Infinity);
+      engine.hoverPaused = !onScreen || entry.intersectionRect.height < room / 2;
+      update();
+    },
+    { threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] },
+  );
   visibility.observe(canvas);
 
   const onMotionChange = () => {
@@ -489,7 +495,7 @@ hero.destroy();
 
 ## Performance
 
-dotmorph computes all motion in the vertex shaders, so the CPU does almost nothing per frame. The cost is mostly the number of vertices and pixels.
+dotmorph computes the shapes' motion in the vertex shaders, so the CPU does very little per frame. Hover is the one exception. While the pointer parts the burst or the wave, the CPU steps one small spring per tip (a few hundred). Stirring the globe or the fan costs the CPU next to nothing: it only moves the swirl's centre and energy, and the shaders work out the swirl for every point. This work stops once things settle, and `interactive={false}` turns it off completely. The cost is mostly the number of vertices and pixels.
 
 **Draw fewer elements.** Only shapes with presence above 0 are drawn: one between morphs, and usually two during a morph. The globe and the fan draw the most line vertices:
 

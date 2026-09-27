@@ -1,5 +1,6 @@
 import { BufferGeometry, Euler, Float32BufferAttribute, LineSegments, Matrix3, Matrix4, Points, Vector2, Vector3 } from 'three';
 import { Shape, type Vec3Like } from '../core/Shape';
+import { HoverSwirl } from '../core/hover';
 import { clamp, createRandom } from '../core/random';
 
 /**
@@ -48,6 +49,18 @@ export interface GlobeParams {
   backOpacity: number;
   /** Size of the head dots, relative to the engine's dot size. Live. */
   dotScale: number;
+  /**
+   * Reach of the pointer's swirl, in canvas heights, measured on the canvas
+   * around the swirl centre (the same across and up, so it is round on screen
+   * and the same size on every part of the globe). Live.
+   */
+  hoverReach: number;
+  /**
+   * Largest swirl offset of an arc's head, in canvas heights. The swirl is
+   * nothing right under the pointer, strongest on a ring a little under half
+   * the reach out, and fades to nothing at the reach. Live.
+   */
+  hoverSize: number;
 }
 
 export const GLOBE_DEFAULTS: GlobeParams = {
@@ -71,6 +84,8 @@ export const GLOBE_DEFAULTS: GlobeParams = {
   lineOpacity: 0.5,
   backOpacity: 0.14,
   dotScale: 0.85,
+  hoverReach: 0.25,
+  hoverSize: 0.034,
 };
 
 const DEG = Math.PI / 180;
@@ -92,6 +107,8 @@ uniform float uTailFade;
 uniform float uLineOpacity;
 uniform float uBackOpacity;
 uniform float uDotScale;
+uniform vec3 uSwirl;
+uniform vec2 uGlobeHover;
 attribute float aLon;
 attribute float aStart;
 attribute float aSpan;
@@ -122,6 +139,28 @@ vec3 globeNormal(float u) {
   return uTilt * vec3(s * cos(lon), cos(colat), s * sin(lon));
 }
 
+// Hover: the pointer stirs the arcs. The swirl is worked out once, at the arc's
+// head, on the canvas around the swirl centre. It follows the arc's life: it
+// fades in once the head has run a little way out (10% to 35% of the growing
+// phase) and out again before the tail catches up (65% to 90% of the
+// retracting phase), so arcs that are just born or nearly gone stay still.
+vec3 globeHover(vec3 head, float life) {
+  if (uHoverGain <= 0.0 || uSwirl.z <= 0.0) return vec3(0.0);
+  float retract = (life - uGrow) / (1.0 - uGrow);
+  float gate = smoothstep(0.1, 0.35, life / uGrow) * (1.0 - smoothstep(0.65, 0.9, retract));
+  if (gate <= 0.0) return vec3(0.0);
+  vec3 view = (modelViewMatrix * vec4(head, 1.0)).xyz;
+  vec3 swirl = dmSwirl(view, uSwirl.xy, uGlobeHover.x * uHoverReach, uGlobeHover.y * uSwirl.z * uHoverGain);
+  return dmViewToModel(swirl) * gate;
+}
+
+// How much of the head's swirl a point of the arc takes: the arc flexes like a
+// rod clamped at its tail (0) and loaded at its head (1), so it leaves the tail
+// straight and curves most towards the head.
+float globeFlex(float along) {
+  return along * along * (1.5 - 0.5 * along);
+}
+
 // 1 on the half of the sphere facing the camera, 0 on the far half, soft across the rim.
 float globeFront(vec3 dir, vec3 point) {
   vec3 world = (modelMatrix * vec4(point, 1.0)).xyz;
@@ -133,7 +172,8 @@ float globeFront(vec3 dir, vec3 point) {
 const DOT = /* glsl */ `
 vec3 dmShapeDot(out float alpha, out float scale) {
   float life = globeLife();
-  vec3 dir = globeNormal(globeHeadTail(life).x);
+  vec2 headTail = globeHeadTail(life);
+  vec3 dir = globeNormal(headTail.x);
   vec3 point = uCenter + dir * uRadius;
   float front = globeFront(dir, point);
   // Depth only applies once the dot has landed, so the cloud stays bright.
@@ -142,28 +182,33 @@ vec3 dmShapeDot(out float alpha, out float scale) {
   float envelope = smoothstep(0.0, 0.08, life) * (1.0 - smoothstep(0.8, 1.0, life));
   alpha = envelope * mix(1.0, mix(uBackOpacity, 1.0, front), landed);
   scale = uDotScale * envelope * mix(0.8, 1.0, fract(aSeed * 7.31)) * mix(1.0, mix(0.7, 1.0, front), landed);
-  return point;
+  return point + globeHover(point, life);
 }
 `;
 
 const LINE = /* glsl */ `
 vec3 dmShapeLine(out float alpha) {
-  vec2 headTail = globeHeadTail(globeLife());
+  float life = globeLife();
+  vec2 headTail = globeHeadTail(life);
   // The line's vertices always span the visible piece, from the tail (aAlong 0) to the head (aAlong 1).
   float u = mix(headTail.y, headTail.x, aAlong);
   vec3 dir = globeNormal(u);
   vec3 point = uCenter + dir * uRadius;
   float fade = smoothstep(0.0, uTailFade, u - headTail.y);
   alpha = uLineOpacity * fade * mix(uBackOpacity, 1.0, globeFront(dir, point));
-  return point;
+  vec3 head = uCenter + globeNormal(headTail.x) * uRadius;
+  return point + globeHover(head, life) * globeFlex(aAlong);
 }
 `;
 
 export class GlobeShape extends Shape<GlobeParams> {
   readonly name = 'globe' as const;
   protected readonly structuralKeys = ['arcs', 'segments', 'jitter', 'seed'] as const;
+  protected readonly ownsHover = true;
   private readonly euler = new Euler();
   private readonly rotation = new Matrix4();
+  /** Swirl centre and energy, shared with the materials as `uSwirl`. */
+  private readonly swirl = new HoverSwirl();
 
   constructor(params?: Partial<GlobeParams>) {
     super(GLOBE_DEFAULTS, params);
@@ -181,7 +226,23 @@ export class GlobeShape extends Shape<GlobeParams> {
       uLineOpacity: { value: 0 },
       uBackOpacity: { value: 0 },
       uDotScale: { value: 1 },
+      uSwirl: this.swirl.uniform,
+      uGlobeHover: { value: new Vector2() },
     });
+  }
+
+  pointerMove(x: number, y: number, live: boolean) {
+    super.pointerMove(x, y, live);
+    this.swirl.move(x, y, live);
+  }
+
+  updateHover(_time: number, delta: number) {
+    this.swirl.step(delta);
+  }
+
+  resetHover() {
+    super.resetHover();
+    this.swirl.reset();
   }
 
   protected build() {
@@ -266,5 +327,6 @@ export class GlobeShape extends Shape<GlobeParams> {
     u.uLineOpacity.value = p.lineOpacity;
     u.uBackOpacity.value = clamp(p.backOpacity, 0, 1);
     u.uDotScale.value = Math.max(0, p.dotScale);
+    (u.uGlobeHover.value as Vector2).set(Math.max(1e-3, p.hoverReach), Math.max(0, p.hoverSize));
   }
 }

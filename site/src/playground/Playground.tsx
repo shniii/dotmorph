@@ -113,7 +113,7 @@ export function Playground() {
           <Toggle checked={motion} onChange={setMotion} label={motion ? 'Animated' : 'Still'} />
         </Field>
         <Field label="Pointer">
-          <Toggle checked={interactive} onChange={setInteractive} label={interactive ? 'Pushes dots' : 'Off'} />
+          <Toggle checked={interactive} onChange={setInteractive} label={interactive ? 'Hover on' : 'Off'} />
         </Field>
         <Field label="Everything else">
           <Toggle checked={tuning} onChange={setTuning} label="DialKit panels" />

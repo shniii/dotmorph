@@ -1,5 +1,6 @@
 import { BufferGeometry, Float32BufferAttribute, LineSegments, Points, Vector2, Vector3 } from 'three';
 import { Shape } from '../core/Shape';
+import { HoverSwirl } from '../core/hover';
 import { clamp, createRandom } from '../core/random';
 
 /**
@@ -72,6 +73,19 @@ export interface FanParams {
   waistFade: number;
   /** Size of the end dots, relative to the engine's dot size. Live. */
   dotScale: number;
+  /**
+   * Reach of the pointer's swirl, in canvas heights, measured on the canvas
+   * around the swirl centre (the same across and up, so it is round on screen).
+   * Every point of a strand, and every end dot, feels it at its own place, so
+   * hovering the middle of a wing moves that part of the wing. Live.
+   */
+  hoverReach: number;
+  /**
+   * Largest swirl offset, in canvas heights, of a point at a column. Points
+   * nearer the waist take less: nothing at the waist, rising smoothly to all
+   * of it at each column, so the strands stay pinned at the waist. Live.
+   */
+  hoverSize: number;
 }
 
 export const FAN_DEFAULTS: FanParams = {
@@ -101,6 +115,8 @@ export const FAN_DEFAULTS: FanParams = {
   lineOpacity: 0.45,
   waistFade: 0.5,
   dotScale: 0.85,
+  hoverReach: 0.2,
+  hoverSize: 0.05,
 };
 
 /** How much of the overall left-to-right slope a strand keeps as it passes the waist. */
@@ -117,7 +133,25 @@ const COMMON = /* glsl */ `
 uniform vec2 uPeriod;
 uniform vec3 uPhases;
 uniform float uSoftness;
+uniform vec3 uSwirl;
+uniform vec2 uFanHover;
+uniform vec3 uFanWings;
 attribute vec3 aStrand;
+
+// Hover: the pointer stirs the strands. Each point works the swirl out at its
+// own place on the canvas (point is where it is drawn, rest is its place in the
+// shape) and keeps a share of it that is 0 at the waist and rises smoothly to 1
+// at either column, so the strands flex but stay pinned at the waist.
+vec3 fanHover(vec3 point, vec3 rest) {
+  if (uHoverGain <= 0.0 || uSwirl.z <= 0.0) return vec3(0.0);
+  float side = rest.x - uFanWings.x;
+  float outward = side >= 0.0 ? side / uFanWings.z : -side / uFanWings.y;
+  float share = smoothstep(0.0, 1.0, outward);
+  if (share <= 0.0) return vec3(0.0);
+  vec3 view = (modelViewMatrix * vec4(point, 1.0)).xyz;
+  vec3 swirl = dmSwirl(view, uSwirl.xy, uFanHover.x * uHoverReach, uFanHover.y * uSwirl.z * uHoverGain);
+  return dmViewToModel(swirl) * share;
+}
 
 // Where this strand is in its cycle: x = head, y = tail, both 0..1 along the strand.
 vec2 fanRhythm() {
@@ -152,17 +186,7 @@ vec3 dmShapeLine(out float alpha) {
   float wing = sin(DM_TAU * aAlong);
   vec3 p = position;
   p.y += uDrift.x * wing * wing * dmNoise(vec2(aSeed * 61.0 + 5.0, uTime * uDrift.y + aSeed * 7.0));
-
-  // The template pushes lines away from the pointer in proportion to aAlong, which
-  // suits lines held at one end. A strand carries a dot at both ends, so add the
-  // missing share here and the whole strand moves with its dots.
-  // The push is in view space; take it back to model space (rotation and uniform scale).
-  vec4 view = modelViewMatrix * vec4(p, 1.0);
-  vec3 push = vec3(dmRepel(view, 1.0 - aAlong), 0.0);
-  vec3 axisX = modelViewMatrix[0].xyz;
-  vec3 axisY = modelViewMatrix[1].xyz;
-  vec3 axisZ = modelViewMatrix[2].xyz;
-  return p + vec3(dot(axisX, push), dot(axisY, push), dot(axisZ, push)) / max(dot(axisX, axisX), 1e-6);
+  return p + fanHover(p, position);
 }
 `;
 
@@ -188,7 +212,7 @@ vec3 dmShapeDot(out float alpha, out float scale) {
   shown = mix(1.0, shown, smoothstep(0.6, 1.0, dmProgress(uPresence, aSeed)));
   alpha = smoothstep(0.0, 0.5, shown);
   scale = uDotScale * shown;
-  return position;
+  return position + fanHover(position, position);
 }
 `;
 
@@ -224,6 +248,9 @@ export class FanShape extends Shape<FanParams> {
     'depth',
     'seed',
   ] as const;
+  protected readonly ownsHover = true;
+  /** Swirl centre and energy, shared with the materials as `uSwirl`. */
+  private readonly swirl = new HoverSwirl();
 
   constructor(params?: Partial<FanParams>) {
     super(FAN_DEFAULTS, params);
@@ -236,7 +263,25 @@ export class FanShape extends Shape<FanParams> {
       uWaistFade: { value: 0 },
       uWaistX: { value: 0 },
       uDotScale: { value: 0 },
+      uSwirl: this.swirl.uniform,
+      uFanHover: { value: new Vector2() },
+      uFanWings: { value: new Vector3(0, 1, 1) },
     });
+  }
+
+  pointerMove(x: number, y: number, live: boolean) {
+    super.pointerMove(x, y, live);
+    this.swirl.move(x, y, live);
+  }
+
+  /** Drains the energy and moves the swirl centre; the shaders do the rest. */
+  updateHover(_time: number, delta: number) {
+    this.swirl.step(delta);
+  }
+
+  resetHover() {
+    super.resetHover();
+    this.swirl.reset();
   }
 
   protected build() {
@@ -397,5 +442,8 @@ export class FanShape extends Shape<FanParams> {
     u.uWaistFade.value = clamp(p.waistFade, 0, 1);
     u.uWaistX.value = p.waistX;
     u.uDotScale.value = Math.max(0, p.dotScale);
+    (u.uFanHover.value as Vector2).set(Math.max(1e-3, p.hoverReach), Math.max(0, p.hoverSize));
+    // The waist and how far each column is from it, for the hover share.
+    (u.uFanWings.value as Vector3).set(p.waistX, Math.max(1e-3, p.waistX - p.leftX), Math.max(1e-3, p.rightX - p.waistX));
   }
 }

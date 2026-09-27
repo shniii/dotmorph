@@ -26,8 +26,9 @@ export function HowItWorks() {
         <div className="card card--text">
           <h3>Everything on the GPU</h3>
           <p>
-            Sway, twinkle, rotation, growing arcs and the pointer push all run in shaders. The engine only nudges a few
-            numbers per frame, which keeps it smooth with thousands of dots and lines.
+            Sway, twinkle, rotation, growing arcs and the hover swirl on the globe and the fan all run in shaders. The engine
+            only nudges a few numbers per frame (plus a few hundred tiny springs while you part the burst or the wave), which
+            keeps it smooth with thousands of dots and lines.
           </p>
         </div>
       </div>

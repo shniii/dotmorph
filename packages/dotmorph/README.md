@@ -51,7 +51,7 @@ The canvas is transparent and fills its parent. Change `shape` and every dot fli
 | `palette` | `PaletteName \| Palette` | `'aurora'` | `aurora`, `ocean`, `ember`, `mint`, `rose`, `midnight`, or your own `{ top, bottom }`. |
 | `motion` | `boolean` | follows `prefers-reduced-motion` | When `false`, time stands still and morphs are instant. |
 | `transitionDuration` | `number` | `1.5` | Seconds per morph. |
-| `interactive` | `boolean` | `true` | Let the pointer push dots and lines aside. |
+| `interactive` | `boolean` | `true` | React to a hovering mouse or pen: the burst and the wave part around it, the globe and the fan swirl. |
 | `pauseWhenHidden` | `boolean` | `true` | Stop rendering while scrolled out of view. |
 | `options` | `EngineOptions` | | Cloud layout, per-shape parameters, stagger, swoop and more. Read once, on mount. |
 | `onReady` | `(engine) => void` | | Access the engine, e.g. to tune it live. |

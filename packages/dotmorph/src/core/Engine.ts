@@ -30,11 +30,20 @@ export interface EngineSettings {
   cloudCenter: Vec3Like;
   /** Presence (0..1) above which lines start drawing in. */
   lineStart: number;
-  /** React to the pointer. */
+  /**
+   * React to a hovering mouse or pen: the burst and the wave part around it on
+   * springs, the globe and the fan swirl when it moves. Touch never drives hover.
+   * Off disables all of it at no cost.
+   */
   interactive: boolean;
-  /** Pointer influence radius, where 1 is half the canvas height. */
+  /**
+   * Reach of the pointer. Each built-in shape has its own tuned reach and
+   * scales it by `pointerRadius / 0.32`, so the default keeps them as designed
+   * and 0.64 doubles every reach. For custom shapes using the generic `dmRepel`
+   * push it is the radius itself, where 1 is half the canvas height.
+   */
   pointerRadius: number;
-  /** Pointer push strength. */
+  /** Overall hover strength: scales every shape's displacement without changing how it moves (0 = none). */
   pointerStrength: number;
 }
 
@@ -81,6 +90,8 @@ export interface EngineOptions extends Partial<EngineSettings> {
 const LEAVE_END = 0.6;
 const ARRIVE_START = 0.4;
 const PALETTE_SECONDS = 0.7;
+/** Hover input counts only while frames are coming: the loop runs, or `tick` was called this recently (ms). */
+const TICK_GRACE = 250;
 
 interface Transition {
   start: number;
@@ -113,6 +124,12 @@ export class DotMorphEngine {
   readonly shapes: { burst: BurstShape; globe: GlobeShape; wave: WaveShape; fan: FanShape };
   /** Called when a morph finishes, with the shape now showing. */
   onMorphEnd: ((shape: ShapeName) => void) | null = null;
+  /**
+   * Pause hover on its own, leaving the animation running: nothing hover-related
+   * runs and pointer moves are not stored up. `DotMorph` sets it while the canvas
+   * is mostly scrolled out of view. Hover picks up where it was when cleared.
+   */
+  hoverPaused = false;
 
   private readonly uniforms: SharedUniforms;
   private currentShape: ShapeName;
@@ -128,6 +145,13 @@ export class DotMorphEngine {
   private paletteFrom: PaletteColors | null = null;
   private paletteTo: PaletteColors;
   private paletteStart = 0;
+  /** Whether a mouse or pen is over the canvas. */
+  private pointerInside = false;
+  /** The pointer's latest position over the canvas, in NDC (y up), kept for a shape that starts listening. */
+  private lastPointerX = 0;
+  private lastPointerY = 0;
+  private lastTickAt = -Infinity;
+  // The generic dmRepel push for custom shapes: an eased pointer and a level that fades while idle.
   private readonly pointer = new Vector2(0, -10);
   private readonly pointerTarget = new Vector2(0, -10);
   private pointerLevel = 0;
@@ -164,6 +188,8 @@ export class DotMorphEngine {
       uPointer: { value: this.pointer },
       uPointerStrength: { value: 0 },
       uPointerRadius: { value: this.settings.pointerRadius },
+      uHoverGain: { value: 0 },
+      uHoverReach: { value: 1 },
       uColorTop: { value: this.paletteTo.top.clone() },
       uColorBottom: { value: this.paletteTo.bottom.clone() },
       uRampEnd: { value: this.paletteTo.rampEnd },
@@ -178,7 +204,7 @@ export class DotMorphEngine {
     };
     for (const name of SHAPE_NAMES) {
       const s = this.shapeByName(name);
-      s.attach({ shared: this.uniforms, cloud: this.cloud, requestRender: this.requestRender });
+      s.attach({ shared: this.uniforms, cloud: this.cloud, requestRender: this.requestRender, camera: this.camera });
       s.setPresence(name === this.currentShape ? 1 : 0);
       this.scene.add(s.group);
     }
@@ -201,7 +227,12 @@ export class DotMorphEngine {
     return this.motionEnabled;
   }
 
-  /** Turn animation on or off. Off freezes time and makes morphs instant. */
+  /**
+   * Turn animation on or off. Off freezes time and makes morphs instant; hover
+   * freezes where it is. Pointer moves made meanwhile are remembered but build
+   * nothing up, so hover carries on from the latest position when motion is
+   * back on.
+   */
   set motion(value: boolean) {
     this.motionEnabled = value;
     if (!value && this.transition) this.finishTransition();
@@ -218,7 +249,7 @@ export class DotMorphEngine {
   morphTo(shape: ShapeName | number, animate = this.motionEnabled) {
     const target = toShapeName(shape);
     if (target === this.currentShape && !this.transition) return;
-    this.currentShape = target;
+    this.listen(target);
     if (!animate) {
       for (const name of SHAPE_NAMES) this.shapeByName(name).setPresence(name === target ? 1 : 0);
       this.transition = null;
@@ -258,7 +289,9 @@ export class DotMorphEngine {
 
   setSettings(patch: Partial<EngineSettings>) {
     const clean = definedOnly(patch);
+    const wasInteractive = this.settings.interactive;
     Object.assign(this.settings, clean, clean.cloudCenter ? { cloudCenter: { ...this.settings.cloudCenter, ...definedOnly(clean.cloudCenter) } } : {});
+    if (wasInteractive && !this.settings.interactive) this.resetHover();
     this.applySettings();
     if (!this.running) this.renderOnce();
   }
@@ -298,15 +331,23 @@ export class DotMorphEngine {
     if (this.disposed) return;
     const delta = clamp((now - this.last) / 1000, 0, 0.1);
     this.last = now;
+    this.lastTickAt = performance.now();
     this.clock += delta;
     if (this.motionEnabled) this.time += delta;
     this.stepTransition();
     this.stepPalette();
-    this.stepPointer(delta);
+    // Hover runs only while it can animate; otherwise it stays frozen (and costs nothing).
+    const hover = this.settings.interactive && this.motionEnabled && !this.hoverPaused;
+    if (hover) this.stepPointer(delta);
     this.uniforms.uTime.value = this.time;
     for (const name of SHAPE_NAMES) {
-      const s = this.shapeByName(name);
-      if (s.presence > 0) s.update(this.time, delta);
+      const s = this.shapes[name];
+      const visible = s.presence > 0;
+      if (visible) s.update(this.time, delta);
+      // The shape being shown (or morphed to) runs its hover even before its dots
+      // arrive; a leaving shape plays its out while it is still visible. Any other
+      // shape's hover stays frozen until it comes back.
+      if (hover && (visible || name === this.currentShape)) s.updateHover(this.time, delta);
     }
     this.renderer.render(this.scene, this.camera);
   }
@@ -334,6 +375,8 @@ export class DotMorphEngine {
     this.camera.position.set(0, 0, Math.max(6.2, fit));
     this.camera.lookAt(0, 0, 0);
     this.camera.updateProjectionMatrix();
+    // Shapes mirror positions on the CPU for hover; give them the new view right away.
+    this.camera.updateMatrixWorld();
     const ratio = this.renderer.getPixelRatio();
     (this.uniforms.uResolution.value as Vector2).set(width * ratio, height * ratio);
     this.uniforms.uPixelRatio.value = ratio * clamp(height / 520, 0.55, 1.6);
@@ -360,6 +403,8 @@ export class DotMorphEngine {
     u.uCloudOpacity.value = s.cloudOpacity;
     u.uLineStart.value = clamp(s.lineStart, 0, 0.95);
     u.uPointerRadius.value = s.pointerRadius;
+    u.uHoverGain.value = s.interactive ? Math.max(0, s.pointerStrength) : 0;
+    u.uHoverReach.value = Math.max(0, s.pointerRadius) / ENGINE_DEFAULTS.pointerRadius;
     (u.uCloudCenter.value as Vector3).set(s.cloudCenter.x, s.cloudCenter.y, s.cloudCenter.z);
   }
 
@@ -395,23 +440,70 @@ export class DotMorphEngine {
     if (k >= 1) this.paletteFrom = null;
   }
 
+  /** Eases the generic `dmRepel` pointer (used by custom shapes only). */
   private stepPointer(delta: number) {
     const follow = 1 - Math.exp(-delta * 9);
     this.pointer.lerp(this.pointerTarget, follow);
     this.pointerTargetLevel *= Math.exp(-delta * 1.2);
     this.pointerLevel += (this.pointerTargetLevel - this.pointerLevel) * (1 - Math.exp(-delta * 6));
-    this.uniforms.uPointerStrength.value = this.settings.interactive ? this.pointerLevel * this.settings.pointerStrength : 0;
+    this.uniforms.uPointerStrength.value = this.pointerLevel * this.settings.pointerStrength;
+  }
+
+  /**
+   * Makes `name` the shape that hears the pointer. The outgoing shape keeps the
+   * last pointer it saw, so its clearing or swirl plays out while it leaves. The
+   * incoming one is handed where the pointer is now: its current position (as
+   * a move that builds nothing up) if it is over the canvas, or that it has
+   * left. So a returning burst or wave never holds a dent where nobody points.
+   */
+  private listen(name: ShapeName) {
+    this.currentShape = name;
+    const shape = this.shapes[name];
+    if (this.pointerInside) shape.pointerMove(this.lastPointerX, this.lastPointerY, false);
+    else shape.pointerLeave();
+  }
+
+  /** Hover input only counts while hover can animate: on, with motion, and frames coming. */
+  private get hoverLive(): boolean {
+    return (
+      this.settings.interactive &&
+      this.motionEnabled &&
+      !this.hoverPaused &&
+      (this.running || performance.now() - this.lastTickAt < TICK_GRACE)
+    );
+  }
+
+  /** Put every shape's hover to rest at once and forget the pointer (`interactive` turned off). */
+  private resetHover() {
+    this.pointerInside = false;
+    this.pointerLevel = 0;
+    this.pointerTargetLevel = 0;
+    this.uniforms.uPointerStrength.value = 0;
+    for (const name of SHAPE_NAMES) this.shapes[name].resetHover();
   }
 
   private onPointerMove = (event: PointerEvent) => {
+    // Touch never drives hover: a touch screen has nothing to hover with, and a tap must not leave a dent.
+    if (event.pointerType === 'touch' || !this.settings.interactive) return;
     const rect = this.canvas.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
-    this.pointerTarget.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+    const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    this.pointerInside = true;
+    this.lastPointerX = x;
+    this.lastPointerY = y;
+    const live = this.hoverLive;
+    this.shapes[this.currentShape].pointerMove(x, y, live);
+    if (!live) return;
+    this.pointerTarget.set(x, y);
     if (this.pointerLevel < 0.01) this.pointer.copy(this.pointerTarget);
     this.pointerTargetLevel = 1;
   };
 
-  private onPointerLeave = () => {
+  private onPointerLeave = (event: PointerEvent) => {
+    if (event.pointerType === 'touch') return;
+    this.pointerInside = false;
     this.pointerTargetLevel = 0;
+    this.shapes[this.currentShape].pointerLeave();
   };
 }

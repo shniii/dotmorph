@@ -75,7 +75,7 @@ export function Hero() {
 | `palette` | `PaletteName \| Palette` | `'aurora'` | A built-in palette name or your own `{ top, bottom }` object. Changing it fades the colours over 0.7 s, or switches instantly when motion is off or the canvas is off screen. Custom objects are compared by `top`, `bottom` and `rampEnd`, so an inline object doesn't restart the fade on every render. |
 | `motion` | `boolean` | `!usePrefersReducedMotion()` | Animate. See [Reduced motion](#reduced-motion). |
 | `transitionDuration` | `number` | `1.5` (engine default) | Seconds per morph. A change applies from the next morph. |
-| `interactive` | `boolean` | `true` | Let the pointer push dots and lines aside. |
+| `interactive` | `boolean` | `true` | React to a hovering mouse or pen: the burst and the wave part around it, the globe and the fan swirl (see [Pointer interaction](#pointer-interaction)). |
 | `pauseWhenHidden` | `boolean` | `true` | Stop the render loop while the canvas is out of view. See [Pausing off screen](#pausing-off-screen). |
 | `options` | `Omit<EngineOptions, 'shape' \| 'palette' \| 'motion' \| 'transitionDuration' \| 'interactive'>` | none | Everything else the engine accepts: `maxPixelRatio`, `cloud`, `shapes` (per-shape params) and the other [engine settings](#engine-settings). **Read once, on mount.** Later changes to this prop are ignored. Use `onReady` and the engine methods to change things afterwards. |
 | `onReady` | `(engine: DotMorphEngine) => void` | none | Called once the engine exists. Use it to keep a reference or to tune the engine. |
@@ -83,7 +83,7 @@ export function Hero() {
 | `onError` | `(error: unknown) => void` | none | Called when the engine can't be created. See [Errors and fallback](#errors-and-fallback). |
 | `fallback` | `ReactNode` | `null` | Rendered instead of the canvas when the engine can't be created. |
 | `className` | `string` | none | Class name for the `<canvas>`. |
-| `style` | `CSSProperties` | none | Inline style for the `<canvas>`, merged over the defaults `display: block; width: 100%; height: 100%; touch-action: pan-y`. |
+| `style` | `CSSProperties` | none | Inline style for the `<canvas>`, merged over the defaults `display: block; width: 100%; height: 100%`. |
 
 `DotMorphProps`, the props interface, is exported from `dotmorph/react`.
 
@@ -117,13 +117,13 @@ In development, React Strict Mode mounts effects twice. The engine is created, d
 - stops the render loop and draws a single still frame;
 - freezes time, so shapes don't sway, spin or pulse;
 - makes morphs and palette changes instant;
-- turns off the pointer effect in practice, because the pointer is only eased and applied while the loop runs.
+- pauses hover: any clearing or swirl freezes where it is. Pointer moves made meanwhile don't build up a swirl, and when motion is back on, hover carries on from the pointer's latest position.
 
 Pass `motion={true}` or `motion={false}` to override the system setting.
 
 ### Pausing off screen
 
-With `pauseWhenHidden` on (the default), an `IntersectionObserver` watches the canvas. The loop runs only while the canvas is on screen. When it scrolls away, the loop stops and the canvas keeps its last frame. Shape and palette changes made while it is off screen are applied instantly. The loop doesn't start until the observer's first report. Where `IntersectionObserver` doesn't exist, the canvas is treated as always visible.
+With `pauseWhenHidden` on (the default), an `IntersectionObserver` watches the canvas. The loop runs only while the canvas is on screen. When it scrolls away, the loop stops and the canvas keeps its last frame. Hover pauses earlier, as soon as less than half of the canvas shows (or less than half the viewport's height of it, for a canvas taller than the viewport), by setting `engine.hoverPaused`. Shape and palette changes made while it is off screen are applied instantly. The loop doesn't start until the observer's first report. Where `IntersectionObserver` doesn't exist, the canvas is treated as always visible.
 
 Browsers also pause `requestAnimationFrame` in background tabs, so the loop pauses there on its own.
 
@@ -235,6 +235,7 @@ const engine = new DotMorphEngine(canvas, {
 | `isMorphing` | `boolean` (getter) | `true` while a morph is in progress. |
 | `isRunning` | `boolean` (getter) | `true` while the render loop is running. |
 | `motion` | `boolean` (getter and setter) | Whether animation is on. See [`motion`](#motion). |
+| `hoverPaused` | `boolean` | Pause hover alone while the animation keeps running. Nothing hover-related runs, and pointer moves don't build up a swirl. Hover picks up where it was when you set it back to `false`. `DotMorph` sets it while the canvas is mostly off screen. Defaults to `false`. |
 
 ### Methods
 
@@ -314,7 +315,7 @@ Advance one frame and render it. `now` is a timestamp in milliseconds on the `pe
 
 After `dispose()` it does nothing.
 
-Each tick advances the engine clock (morphs and palette fades), advances animation time when motion is on, eases the pointer, runs each visible shape's `update()` and renders.
+Each tick advances the engine clock (morphs and palette fades), advances animation time when motion is on, runs each visible shape's `update()`, steps hover (see [Pointer interaction](#pointer-interaction)) and renders. Hover also counts pointer moves while you drive frames with `tick()` yourself, as long as the last tick was less than a quarter of a second ago.
 
 #### renderOnce
 
@@ -368,7 +369,7 @@ With `DotMorph`, use the `onMorphEnd` prop. The component sets `engine.onMorphEn
 engine.motion = false;
 ```
 
-Reading it tells you whether animation is on. Setting it to `false` freezes time, snaps a running morph to its end (firing `onMorphEnd`) and makes later morphs and palette changes instant by default. It does **not** stop the loop: call `stop()` as well to save work (`DotMorph` does both). Setting it to `true` resumes animation from the next tick.
+Reading it tells you whether animation is on. Setting it to `false` freezes time, snaps a running morph to its end (firing `onMorphEnd`), freezes hover where it is (pointer moves made meanwhile don't build up a swirl) and makes later morphs and palette changes instant by default. It does **not** stop the loop: call `stop()` as well to save work (`DotMorph` does both). Setting it to `true` resumes animation from the next tick.
 
 ### The morph timeline
 
@@ -394,13 +395,40 @@ Every shape has a **presence** value from 0 to 1. At 1 the shape is fully formed
 
 ### Pointer interaction
 
-When `interactive` is on and the loop is running, moving the pointer over the canvas pushes nearby dots and lines away on screen.
+When `interactive` is on, hovering a mouse (or a pen) over the canvas moves the dots and lines of the shape being shown. The shapes come in two families, and each family moves in its own way. Hover only moves things. It doesn't change size or glow. Dots and line ends take the colour of their new height on the canvas, and a burst ray pushed shorter fades a little towards its tip.
 
-- Dots are pushed in proportion to how far they have landed, so dots in the cloud barely move. Lines are pushed in proportion to `aAlong`, so tips move and anchors stay put. The fan's strands have a dot at each end, so they move as a whole.
-- The push follows the pointer with a short lag. It fades away within a second or two after the pointer stops moving, and when the pointer leaves the canvas.
-- `pointerRadius` sets the reach. A value of 1 equals half the canvas height, so the default 0.32 reaches about 16 % of the canvas height. `pointerStrength` scales the push.
+**Parting: burst and wave.** The pointer pushes nearby tips aside on springs. The clearing holds for as long as the pointer rests, and the tips spring back when it moves on or leaves.
+
+- **Burst.** Only the tips move. Each dot moves with the outer end of its ray, and the rays stay straight and pivot about the origin. The reach is a share of the canvas width to either side and of its height above and below, so it is a wide ellipse on a wide canvas. Tips are pushed away from the pointer. A tip that lies past the pointer along its own ray also gets an outward push along that ray, which grows with how far past the pointer it lies, so only the rays reaching past the pointer grow, the farther past the more. Tips between the pointer and the origin get none and retreat, so their rays get shorter and a little dimmer towards the tip. Tips beside it slide sideways, and a tip right under the pointer goes outward along its ray. The clearing is a lens, a bit wider than tall, about a tenth of the canvas height around a resting pointer. Each tip's push strength wanders slowly on its own, so the rim of the clearing is uneven and keeps shifting. Each tip's damping follows how hard it is pushed at that moment: a tip pushed hard is well damped, a tip pushed lightly or not at all is bouncy. So tips move clear in about a quarter of a second and settle with a small overshoot, while tips the pointer lets go of, when it moves on or leaves, swing back with a lively wobble of two or three bounces.
+- **Wave.** Only the stem tops move. Each dot moves with the top of its stem, and the bottoms stay put, so stems stretch, squash and lean. A top is pushed straight away from the pointer, but its stem is stiffer against leaning than against stretching: sideways, its spring swings in about two thirds of the time. So under the same push a top leans only about 0.42 as far as it stretches or squashes, and a sideways nudge snaps back quicker than a stretch. Distances are measured on the canvas in canvas heights, so the reach is round on screen and the same size over near and far stems. The push fades on a smooth bell to nothing at the edge of the reach. Only the crest reacts. Hovering low on the stems does nothing. The springs are bouncy all the time: tops pop out with a clear overshoot, and a sweep leaves a wake.
+
+**Stirring: globe and fan.** Moving the pointer swirls nearby points counter-clockwise around it, like stirring water. Only movement counts. The swirl's energy grows with how long the pointer keeps moving, whatever the display's refresh rate or the pointer's event rate. About a fifth of a second of movement fills it, and a slow drift charges as much as a fast flick of the same length. The energy drains with a half-life of about 0.7 s, even while the pointer rests on the shape. The swirl's centre follows the pointer without overshooting, a little over a fifth of a second behind a sweep. Nothing springs or overshoots. The swirl is measured on the canvas around its centre, in canvas heights, so it is round on screen and the same size at any depth. It is a smooth vortex: nothing right under the centre, strongest on a ring a little under half the reach out, and nothing past the reach.
+
+- **Globe.** Arcs bend like rods clamped at their tail. The swirl is worked out at the head, and the arc leaves its tail straight and curves most towards the head. An arc's hover follows its life: it fades in once the head has run a little way out and fades out before the tail catches up, so arcs just born or nearly gone stay still.
+- **Fan.** Every point of a strand, and every end dot, feels the swirl at its own place on the canvas. Each takes a share of it that is nothing at the waist and rises smoothly to all of it at either column. So hovering the middle of a wing moves that part of the wing, the column ends move the most, and the waist stays put.
+
+How it plays with everything else:
+
+- Only the shape being shown, or being morphed to, listens to the pointer. When a morph starts, the incoming shape is handed where the pointer is now: its current position if it is over the canvas (as a move that builds up no swirl), or that it has left. So a returning burst or wave never holds a dent where nobody points. The outgoing shape plays out its clearing or swirl with the last pointer it saw, while it dissolves. A hidden shape's springs and energy freeze, and pick up where they were when it returns.
+- Hover is added to each dot's place in the shape before its flight, so dots in the cloud don't move and arriving dots land on already displaced spots. Lines use the displaced positions as they draw in.
+- Before the pointer first enters the canvas, nothing is displaced.
+- Hover only runs while motion is on, frames are coming (the loop is running, or you call `tick()` yourself) and `hoverPaused` is off. While it is paused (motion off, or the canvas mostly scrolled off screen), the clearing or swirl freezes where it is. Moves made meanwhile don't build up a swirl. When hover resumes, it carries on from the pointer's latest position.
+- Springs step in slices of at most half a 60 Hz frame, and long frames are capped. So hover feels the same at 60, 120 or 144 Hz, and a stall never makes tips jump. Each step stays stable for any `hover*` values.
+- Settled shapes cost nothing: once every tip is back at rest, or the swirl has died down, a shape uploads nothing, and does no hover work unless the pointer is close enough to reach a burst tip soon. A wave dent held under a resting pointer also stops working until something changes. Springs only settle at a real balance, never at the still moment of a bounce. A held burst clearing keeps working, because the tips under it sway and breathe (unless `sway`, `breathe` and `hoverBreathe` are all 0).
+- Touch is ignored: it never drives hover, so a tap can't leave a dent, and the canvas never interferes with scrolling, panning or pinch-zooming on touch screens.
+- `pointerStrength` scales every shape's displacement without changing how it moves. `pointerRadius` scales every shape's reach, relative to its default of 0.32. Each shape's own feel is tunable through its `hover*` params (see [Shapes](#shapes)). `interactive: false` turns all of it off at no cost.
 - The listeners sit on the canvas. Elements layered on top of it block the effect unless they have `pointer-events: none`.
-- `DotMorph` sets `touch-action: pan-y` on the canvas, so vertical page scrolling still works on touch screens.
+
+To tune it, change the engine settings for every shape at once, or a shape's own `hover*` params:
+
+```ts
+engine.setSettings({ pointerStrength: 0.6, pointerRadius: 0.4 }); // gentler, and a bit wider, on every shape
+engine.shapes.burst.setParams({ hoverRelease: 0.6 }); // less wobble when the pointer leaves
+engine.shapes.wave.setParams({ hoverDamping: 0.8 }); // calmer stem tops
+engine.shapes.globe.setParams({ hoverSize: 0.06 }); // a stronger swirl
+```
+
+With `DotMorph`, pass the same values in `options` (settings at the top level, params under `shapes`), or make these calls in `onReady`.
 
 ### Coordinates and sizing
 
@@ -424,9 +452,9 @@ When `interactive` is on and the loop is running, moving the pointer over the ca
 | `cloudSpin` | `0.35` | Radians per second the cloud turns about the vertical axis. It runs on animation time, so it stops when motion is off. |
 | `cloudCenter` | `{ x: 0, y: 0.15, z: 0 }` | Centre of the cloud in world units. Changing it is cheap, with no rebuild. |
 | `lineStart` | `0.55` | 0 to 0.95 (clamped). Presence above which lines start drawing in. Higher values draw lines in later and retract them sooner. |
-| `interactive` | `true` | React to the pointer. |
-| `pointerRadius` | `0.32` | Reach of the pointer push, where 1 is half the canvas height. |
-| `pointerStrength` | `1` | Strength of the pointer push. |
+| `interactive` | `true` | React to a hovering mouse or pen (see [Pointer interaction](#pointer-interaction)). Touch never drives hover. Off turns all hover off and puts it back at rest. |
+| `pointerRadius` | `0.32` | Reach of the pointer. Each built-in shape scales its own reach by `pointerRadius / 0.32`, so the default keeps them as designed and 0.64 doubles them. For custom shapes that use the generic `dmRepel` push, it is the radius itself, where 1 is half the canvas height. |
+| `pointerStrength` | `1` | Overall hover strength. Scales every shape's displacement without changing how it moves. 0 means none. |
 
 The clamps apply to what the shaders receive. `engine.settings` keeps the values you passed.
 
@@ -570,6 +598,7 @@ To set starting values, pass them to the constructor as `options.shapes` (or in 
 | `setPresence(value)` | Set presence directly. The group is hidden at 0. The engine overwrites presence during every morph and when a morph ends. |
 | `rebuild()` | Throw away and rebuild the geometry. `setParams` and `setCloud` call it when needed. |
 | `attach(ctx)`, `update(time, delta)`, `dispose()` | Called by the engine. Don't call them yourself. |
+| `pointerMove(x, y, live)`, `pointerLeave()`, `updateHover(time, delta)`, `resetHover()` | Hover hooks, called by the engine. Don't call them yourself. See [Anatomy of a shape](#anatomy-of-a-shape). |
 
 ### Burst
 
@@ -594,6 +623,12 @@ It draws `rays` dots and `rays × 8` line vertices (4 segments per ray).
 | `maxDotScale` | `1.2` | live | Largest dot, relative to `dotSize`. |
 | `lineOpacity` | `0.42` | live | Opacity of the rays at their tips. |
 | `lineFade` | `0.6` | live | Share of each ray, from the origin, that fades out, so the rays don't clump where they meet. |
+| `hoverReach` | `0.37` | live | Reach of the pointer's push, as a share of the canvas: that much of the canvas width to either side and of its height above and below, so it is a wide ellipse on a wide canvas. The push falls off exponentially to nothing at the edge, so it is strong only in the inner part. |
+| `hoverPush` | `1.3` | live | How far, in world units, the push would hold a tip right at the pointer, before the falloff and a soft cap at 1.25 times this. Sets the size of the clearing (about a tenth of the canvas height around the pointer). |
+| `hoverBreathe` | `0.6` | live | 0 to 0.9 (clamped). How uneven the push is from tip to tip. Every tip's push strength wanders slowly on its own between `1 - hoverBreathe` and `1 + hoverBreathe` times `hoverPush`, reaching a new random level every few seconds, so the rim of the clearing is uneven and keeps shifting. 0 pushes every tip the same. |
+| `hoverPeriod` | `0.55` | live | Seconds per swing of the tip springs. |
+| `hoverDamping` | `0.8` | live | Damping ratio of a tip pushed at full strength (at the soft cap). A tip pushed less is damped less, in proportion, down to `hoverRelease` with no push at all. 1 means no overshoot. |
+| `hoverRelease` | `0.3` | live | Damping ratio of a tip nothing pushes: the pointer has left, moved on, or is out of reach. It sets the snap-back wobble. Lower is bouncier. |
 
 ### Globe
 
@@ -623,6 +658,8 @@ It draws `arcs` dots and `arcs × segments × 2` line vertices.
 | `lineOpacity` | `0.5` | live | Opacity of the arcs on the side facing the viewer. |
 | `backOpacity` | `0.14` | live | 0 to 1. Opacity multiplier for arcs and dots on the far side. |
 | `dotScale` | `0.85` | live | Size of the head dots, relative to `dotSize`. |
+| `hoverReach` | `0.25` | live | Reach of the pointer's swirl, in canvas heights, measured on the canvas around the swirl centre. It is round on screen and the same size over the whole globe. |
+| `hoverSize` | `0.034` | live | Largest swirl offset of an arc's head, in canvas heights. It is reached on a ring a little under half the reach out from the centre. Nothing moves right under the centre. |
 
 Changing `minPeriod`, `maxPeriod` or `spin` moves arcs to a new point in their cycle or turn, because these are computed from the running time.
 
@@ -659,6 +696,11 @@ It draws `stems` dots and `stems × 2` line vertices.
 | `lineFade` | `1` | live | 0 to 1 (clamped). How much each stem fades towards its bottom. 1 makes the bottom invisible. |
 | `dotScale` | `0.95` | live | Dot size at the near end, relative to `dotSize`. |
 | `farDotScale` | `0.55` | live | Dot size at the far end, as a fraction of `dotScale`. |
+| `hoverReach` | `0.15` | live | Reach of the pointer around each stem top, in canvas heights, measured on the canvas. It is round on screen and the same size over near and far stems. The push fades on a smooth bell, `(1 - q²)²` with `q` the distance over the reach. |
+| `hoverDent` | `0.06` | live | How far a top right under the pointer settles away from it, in canvas heights. At most 60% of the reach (`hoverReach` scaled by `pointerRadius / 0.32`). |
+| `hoverLean` | `0.65` | live | Sideways swing period of the stem tops, as a share of `hoverPeriod` (at least 0.05). Below 1 a stem is stiffer against leaning than against stretching (its sideways spring is 1 / hoverLean² as stiff), so under the same push a top leans only about hoverLean² as far as it stretches or squashes: 0.42 by default. Tops mostly stretch or squash. |
+| `hoverPeriod` | `0.55` | live | Seconds per swing of the stem-top springs, up and down. |
+| `hoverDamping` | `0.3` | live | Damping ratio of the stem tops, the same up and down as sideways, and with the pointer near or gone. Lower is bouncier. |
 
 ### Fan
 
@@ -696,6 +738,8 @@ It draws `strands × 2` dots and `strands × (samples − 1) × 2` line vertices
 | `lineOpacity` | `0.45` | live | Opacity of a fully drawn strand. Each strand also gets its own brightness between 0.6 and 1. |
 | `waistFade` | `0.5` | live | 0 to 1 (clamped). How much strands thin out where they bunch up at the waist. |
 | `dotScale` | `0.85` | live | Size of the end dots, relative to `dotSize`. |
+| `hoverReach` | `0.2` | live | Reach of the pointer's swirl, in canvas heights, measured on the canvas around the swirl centre. Every point of a strand, and every end dot, feels it at its own place. |
+| `hoverSize` | `0.05` | live | Largest swirl offset, in canvas heights, of a point at a column. A point's share rises smoothly from nothing at the waist to all of it at either column. |
 
 ## Custom shapes
 
@@ -720,6 +764,13 @@ A shape extends `Shape<P>`, where `P` is its params interface:
 - `protected build()`: create the geometries and materials and add the meshes to `this.group`. It runs when the engine attaches the shape, and again on every rebuild, after the old meshes have been disposed.
 - `protected syncUniforms()`: copy the live params into the `this.local` uniforms. It runs after `build()` and on every `setParams()` that doesn't rebuild.
 - Optionally, `update(time, delta)`: per-frame CPU work, with `time` in seconds of animation time. It runs only while the shape's presence is above 0. None of the built-in shapes need it.
+- Optionally, hover of its own. By default, the templates push dots and lines away from the pointer with the generic `dmRepel`. A shape that sets `protected readonly ownsHover = true` skips that push and adds its own offsets inside `dmShapeDot` and `dmShapeLine`, usually with the hover helpers `dmViewToModel` and `dmSwirl` (see [the GLSL contract](#the-glsl-contract)). For state on the CPU, it can override these hooks. Call `super` in each one.
+  - `pointerMove(x, y, live)`: the pointer moved, in normalized device coordinates (y up). Only the shape being shown, or being morphed to, hears it. `live` is `false` while hover is paused: keep the position, but don't build anything up from it.
+  - `pointerLeave()`: the pointer left the canvas. A shape that starts being shown while the pointer is outside the canvas gets it too.
+  - `updateHover(time, delta)`: per-frame hover work. It runs only while hover can animate, and only for the shape being shown or a shape that is still visible.
+  - `resetHover()`: put everything back at rest at once. It runs when `interactive` is turned off.
+
+  The last pointer the shape saw is in `this.pointer` (`{ x, y, inside }`). All four built-in shapes own their hover. In a fork, `src/core/hover.ts` holds the springs and the swirl they use.
 
 Protected helpers:
 
@@ -730,7 +781,7 @@ Protected helpers:
 | `this.addCloud(geometry, count, seedOffset)` | Adds `aCloud` (the dot's slot in the cloud) and `aSeed` (a random number from 0 to 1) to a dot geometry. Use a `seedOffset` the other shapes don't use. The built-in shapes use 101, 211, 303 and 409. |
 | `this.local` | The shape's own uniforms, including `uPresence`. |
 | `this.shared` | The engine's shared uniforms. Throws before the shape is attached. |
-| `this.ctx` | `{ shared, cloud }`, set when the engine attaches the shape. |
+| `this.ctx` | `{ shared, cloud, requestRender?, camera? }`, set when the engine attaches the shape. |
 | `this.clear()` | Disposes and removes everything in `this.group`. |
 
 Both materials are transparent, use normal blending, and have depth test and depth write off. Their uniforms are `{ ...shared, ...local }`. The uniform objects are shared by reference, so setting `this.local.uFoo.value` updates every material at once. Don't reuse a shared uniform's name for a local one.
@@ -743,7 +794,7 @@ The dot body must define:
 vec3 dmShapeDot(out float alpha, out float scale)
 ```
 
-Return the dot's place in the shape, in model space and world units, computed from your attributes and uniforms. Both `alpha` (multiplies opacity) and `scale` (multiplies size) start at 1.0. The template takes care of the rest: the flight between the cloud slot and your target, the pointer push, the point size, the fade in the cloud and the colour ramp.
+Return the dot's place in the shape, in model space and world units, computed from your attributes and uniforms. Both `alpha` (multiplies opacity) and `scale` (multiplies size) start at 1.0. The template takes care of the rest: the flight between the cloud slot and your target, the pointer push (unless the shape owns its hover), the point size, the fade in the cloud and the colour ramp.
 
 The line body must define:
 
@@ -751,7 +802,7 @@ The line body must define:
 vec3 dmShapeLine(out float alpha)
 ```
 
-Return the vertex position. `alpha` starts at 1.0. Lines don't fly through the cloud. The template reveals them from `aAlong` 0 to 1 as presence rises above `lineStart`, and pushes them away from the pointer in proportion to `aAlong`.
+Return the vertex position. `alpha` starts at 1.0. Lines don't fly through the cloud. The template reveals them from `aAlong` 0 to 1 as presence rises above `lineStart`, and, unless the shape owns its hover, pushes them away from the pointer in proportion to `aAlong`.
 
 `declarations` is inserted before the body. Put your uniforms, attributes and helper functions there. You can pass the same string to both materials when every attribute it declares exists on both geometries. If you want a dot to look different while it is in flight, read `dmProgress(uPresence, aSeed)`: 0 is in the cloud, 1 is landed. The globe uses this to apply its back-side fade only to landed dots.
 
@@ -774,9 +825,11 @@ Uniforms available to both templates:
 | `uPixelRatio` | `float` | Pixel ratio times the canvas-height factor used for dot sizes. |
 | `uDotSize`, `uStagger`, `uSwoop`, `uCloudSpin`, `uCloudDotScale`, `uCloudOpacity`, `uLineStart` | `float` | The engine settings of the same name (`stagger` and `lineStart` clamped). |
 | `uCloudCenter` | `vec3` | `cloudCenter`. |
-| `uPointer` | `vec2` | Pointer position in normalized device coordinates. |
-| `uPointerStrength` | `float` | Current push strength. It is 0 when `interactive` is off, and fades towards 0 while the pointer is idle. |
+| `uPointer` | `vec2` | The generic push's eased pointer position, in normalized device coordinates. |
+| `uPointerStrength` | `float` | Current strength of the generic push, `pointerStrength` included. It is 0 when `interactive` is off. It fades towards 0 while the pointer is idle, and holds its value while hover is paused. |
 | `uPointerRadius` | `float` | `pointerRadius`. |
+| `uHoverGain` | `float` | `pointerStrength` while `interactive` is on, otherwise 0. Shapes with their own hover multiply their offsets by it, and their shaders skip the hover math when it is 0. |
+| `uHoverReach` | `float` | `pointerRadius / 0.32`: the factor shapes with their own hover scale their reach by. |
 | `uColorTop`, `uColorBottom` | `vec3` | Palette colours. |
 | `uRampEnd` | `float` | Palette `rampEnd`. |
 
@@ -796,7 +849,9 @@ GLSL helpers available in both templates:
 | `float dmProgress(float presence, float seed)` | A dot's own flight progress, with stagger applied. |
 | `vec3 dmCloud(vec3 slot, float seed)` | Where a cloud slot is right now, turning and breathing. |
 | `vec3 dmFlight(vec3 cloud, vec3 target, float k, float seed)` | The curved flight between the cloud and the target. |
-| `vec2 dmRepel(vec4 viewPosition, float amount)` | The pointer push, in view space. |
+| `vec2 dmRepel(vec4 viewPosition, float amount)` | The generic pointer push, in view space, for shapes without hover of their own. |
+| `vec3 dmViewToModel(vec3 v)` | A view-space vector (such as a hover offset) in model space. |
+| `vec3 dmSwirl(vec3 p, vec2 centre, float reach, float size)` | The stirring swirl, as a view-space offset (world units, parallel to the screen) for the view-space point `p`. It is a smooth vortex turning counter-clockwise on screen around `centre` (NDC), measured on the canvas in canvas heights, so it is round on screen and the same size at any depth. It is nothing at the centre, peaks at `size` canvas heights about 45% of `reach` out, and dies out smoothly at `reach` canvas heights. |
 | `float dmScreenHeight(vec4 clip)` | Height on the canvas: 0 at the bottom edge, 1 at the top. |
 
 The templates use the varyings `vAlpha`, `vHeight`, `vAlong` and `vReveal`, and the `dm` prefix for their own names. Give your functions a prefix of their own. The built-in shapes use `burst`, `globe`, `wave` and `fan`.
@@ -970,8 +1025,8 @@ From `dotmorph`:
 | `CloudSettings` | type | See [Cloud settings](#cloud-settings). |
 | `Vec3Like` | type | `{ x: number; y: number; z: number }`. |
 | `Shape` | abstract class | See [Custom shapes](#custom-shapes). |
-| `ShapeHandle` | type | What the engine needs from any shape: `name`, `group`, `presence`, `attach()`, `setPresence()`, `update()`, `rebuild()`, `dispose()`. |
-| `ShapeContext` | type | `{ shared, cloud, requestRender? }`, passed to `Shape.attach()`. |
+| `ShapeHandle` | type | What the engine needs from any shape: `name`, `group`, `presence`, `attach()`, `setPresence()`, `update()`, `rebuild()`, `dispose()`, and the optional hover hooks `pointerMove()`, `pointerLeave()`, `updateHover()` and `resetHover()`. |
+| `ShapeContext` | type | `{ shared, cloud, requestRender?, camera? }`, passed to `Shape.attach()`. |
 | `SharedUniforms` | type | The uniforms every material shares by reference (`Record<string, IUniform>`). |
 
 From `dotmorph/react`: `DotMorph`, `DotMorphProps`, `usePrefersReducedMotion`, plus re-exports of `DotMorphEngine`, `ShapeName`, `PaletteName` and `Palette`.

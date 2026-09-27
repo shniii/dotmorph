@@ -51,13 +51,13 @@ The [package README](packages/dotmorph/README.md) lists every prop. The [API ref
 - **A morph with character.** Dots leave on curved paths, a little out of step with their neighbours, gather in a slowly turning cloud, and land in the next shape. You can tune the length, the stagger and the curve.
 - **Fully tunable.** Every shape parameter is typed. Live values apply on the next frame, and structural ones rebuild the geometry.
 - **Six palettes** (aurora, ocean, ember, mint, rose, midnight) that fade smoothly into each other, plus any two colours of your own.
-- **Interactive.** The pointer gently pushes dots and lines aside.
+- **Interactive.** Hover a mouse or pen over the canvas: it parts the burst and the wave on springs, and stirs the globe and the fan.
 - **Well-behaved.** It pauses off screen, honours `prefers-reduced-motion`, falls back cleanly without WebGL 2, and works with Next.js App Router.
 - **Small surface.** It's ESM only, ships TypeScript types, and keeps `three` and `react` as peer dependencies.
 
 ## How it works
 
-dotmorph is plain three.js: no React Three Fiber, no GPGPU and no post-processing. All motion is computed in the vertex shaders, so the CPU does almost nothing per frame.
+dotmorph is plain three.js: no React Three Fiber, no GPGPU and no post-processing. The shapes' motion is computed in the vertex shaders, so the CPU does almost nothing per frame. Hover adds a little CPU work, such as a few hundred small springs while you part the burst or the wave.
 
 ### Presence
 

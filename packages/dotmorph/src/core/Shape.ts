@@ -4,6 +4,7 @@ import {
   Group,
   NormalBlending,
   ShaderMaterial,
+  type Camera,
   type IUniform,
 } from 'three';
 import { DOT_FRAGMENT, LINE_FRAGMENT, dotVertexShader, lineVertexShader } from './glsl';
@@ -36,6 +37,8 @@ export interface ShapeContext {
   cloud: CloudSettings;
   /** Asks the engine for a new frame when it isn't animating (e.g. after `setParams`). */
   requestRender?: () => void;
+  /** The engine's camera, for shapes that mirror positions on the CPU (hover springs). */
+  camera?: Camera;
 }
 
 /** What the engine needs from any shape, whatever its params type. */
@@ -48,6 +51,14 @@ export interface ShapeHandle {
   update(time: number, delta: number): void;
   rebuild(): void;
   dispose(): void;
+  /** The pointer moved over the canvas (NDC, y up) while this shape listens. */
+  pointerMove?(x: number, y: number, live: boolean): void;
+  /** The pointer left the canvas while this shape listens. */
+  pointerLeave?(): void;
+  /** Per-frame hover work while hover runs and the shape is shown or still visible. */
+  updateHover?(time: number, delta: number): void;
+  /** Drop all hover state at once. */
+  resetHover?(): void;
 }
 
 /**
@@ -68,6 +79,13 @@ export abstract class Shape<P extends object = object> {
   protected ctx: ShapeContext | null = null;
   protected readonly local: Record<string, IUniform> = { uPresence: { value: 0 } };
   protected abstract readonly structuralKeys: readonly (keyof P)[];
+  /**
+   * True when the shape's GLSL adds its own hover offsets, which turns off the
+   * templates' generic `dmRepel` push. Every built-in shape does.
+   */
+  protected readonly ownsHover: boolean = false;
+  /** The pointer as this shape last saw it, in NDC (-1..1 across the canvas, y up). */
+  protected readonly pointer = { x: 0, y: 0, inside: false };
 
   constructor(defaults: P, params: Partial<P> = {}) {
     this.defaults = defaults;
@@ -118,6 +136,35 @@ export abstract class Shape<P extends object = object> {
   /** Optional per-frame CPU work. `time` is in seconds, paused time excluded. */
   update(_time: number, _delta: number) {}
 
+  /**
+   * The engine forwards pointer moves to the shape being shown (or morphed to)
+   * only. `live` is false while hover is paused (motion off, loop stopped,
+   * `hoverPaused`): the position is kept, but nothing may be accumulated from it.
+   */
+  pointerMove(x: number, y: number, _live: boolean) {
+    this.pointer.x = x;
+    this.pointer.y = y;
+    this.pointer.inside = true;
+  }
+
+  /** The pointer left the canvas: as far as this shape knows, it is now infinitely far away. */
+  pointerLeave() {
+    this.pointer.inside = false;
+  }
+
+  /**
+   * Per-frame hover work (springs, energy). The engine calls it only while
+   * `interactive` and motion are on and hover isn't paused, and the shape is the one being shown or is
+   * still visible, so hover state freezes while a shape is away and resumes,
+   * never reset, when it returns.
+   */
+  updateHover(_time: number, _delta: number) {}
+
+  /** Forget the pointer and put everything back at rest at once (`interactive` turned off). */
+  resetHover() {
+    this.pointer.inside = false;
+  }
+
   dispose() {
     this.clear();
     this.group.removeFromParent();
@@ -146,7 +193,7 @@ export abstract class Shape<P extends object = object> {
   protected dotMaterial(declarations: string, body: string) {
     return new ShaderMaterial({
       uniforms: { ...this.shared, ...this.local },
-      vertexShader: dotVertexShader(declarations, body),
+      vertexShader: dotVertexShader(declarations, body, this.ownsHover),
       fragmentShader: DOT_FRAGMENT,
       transparent: true,
       depthTest: false,
@@ -158,7 +205,7 @@ export abstract class Shape<P extends object = object> {
   protected lineMaterial(declarations: string, body: string) {
     return new ShaderMaterial({
       uniforms: { ...this.shared, ...this.local },
-      vertexShader: lineVertexShader(declarations, body),
+      vertexShader: lineVertexShader(declarations, body, this.ownsHover),
       fragmentShader: LINE_FRAGMENT,
       transparent: true,
       depthTest: false,

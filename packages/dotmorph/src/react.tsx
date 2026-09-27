@@ -18,7 +18,7 @@ export interface DotMorphProps {
   motion?: boolean;
   /** Seconds per morph. */
   transitionDuration?: number;
-  /** Let the pointer push dots and lines aside. */
+  /** React to a hovering mouse or pen: the burst and the wave part around it, the globe and the fan swirl. Touch never drives hover. */
   interactive?: boolean;
   /** Stop rendering while the canvas is scrolled out of view. */
   pauseWhenHidden?: boolean;
@@ -37,6 +37,9 @@ export interface DotMorphProps {
 }
 
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+
+/** Visibility thresholds: every tenth, so "mostly off screen" is noticed for canvases of any height. */
+const VISIBILITY_STEPS = Array.from({ length: 11 }, (_, i) => i / 10);
 
 /** `true` when the visitor asked their system for reduced motion. Server-safe; updates live. */
 export function usePrefersReducedMotion(): boolean {
@@ -84,6 +87,8 @@ export function DotMorph({
   const engineRef = useRef<DotMorphEngine | null>(null);
   const [engine, setEngine] = useState<DotMorphEngine | null>(null);
   const [visible, setVisible] = useState(!pauseWhenHidden);
+  // Hover pauses as soon as the canvas is mostly out of view, before the loop does.
+  const [mostlyVisible, setMostlyVisible] = useState(true);
   const [failed, setFailed] = useState(false);
 
   const latest = useRef({ shape, palette, animate, transitionDuration, interactive, options, onReady, onMorphEnd, onError });
@@ -124,17 +129,30 @@ export function DotMorph({
     };
   }, []);
 
-  // Track visibility so off-screen canvases don't render.
+  // Track visibility so off-screen canvases don't render, and hover stops once
+  // less than half of the canvas (or of the viewport, for a very tall one) shows.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!pauseWhenHidden || !canvas || typeof IntersectionObserver === 'undefined') {
       setVisible(true);
+      setMostlyVisible(true);
       return;
     }
-    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.05 });
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setVisible(entry.isIntersecting);
+        const room = Math.min(entry.boundingClientRect.height, entry.rootBounds?.height ?? Infinity);
+        setMostlyVisible(entry.isIntersecting && entry.intersectionRect.height >= room * 0.5);
+      },
+      { threshold: VISIBILITY_STEPS },
+    );
     observer.observe(canvas);
     return () => observer.disconnect();
   }, [pauseWhenHidden]);
+
+  useEffect(() => {
+    if (engine) engine.hoverPaused = !mostlyVisible;
+  }, [engine, mostlyVisible]);
 
   // Run the loop only while visible and animating.
   useEffect(() => {
@@ -169,7 +187,7 @@ export function DotMorph({
     <canvas
       ref={canvasRef}
       className={className}
-      style={{ display: 'block', width: '100%', height: '100%', touchAction: 'pan-y', ...style }}
+      style={{ display: 'block', width: '100%', height: '100%', ...style }}
       aria-hidden="true"
     />
   );

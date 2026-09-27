@@ -1,7 +1,9 @@
 /**
  * GLSL shared by every shape. A shape only has to say where its dots and lines
  * are; these helpers handle the flight through the cloud, pointer repulsion,
- * the round sprite and the colour ramp.
+ * the round sprite and the colour ramp. Shapes with hover of their own (every
+ * built-in one) skip the generic repulsion and add their own offsets with the
+ * `HOVER` helpers.
  *
  * Every dot carries three things: its target in the shape (computed by the
  * shape's own GLSL each frame), `aCloud` (its slot in the cloud) and `aSeed`
@@ -27,6 +29,8 @@ uniform float uLineStart;
 uniform vec2 uPointer;
 uniform float uPointerStrength;
 uniform float uPointerRadius;
+uniform float uHoverGain;
+uniform float uHoverReach;
 uniform vec3 uColorTop;
 uniform vec3 uColorBottom;
 uniform float uRampEnd;
@@ -105,6 +109,7 @@ vec3 dmFlight(vec3 cloud, vec3 target, float k, float seed) {
 }
 
 // View-space push away from the pointer, strongest near it and for formed dots.
+// The generic hover for shapes without their own; the built-in shapes don't use it.
 vec2 dmRepel(vec4 viewPosition, float amount) {
   if (uPointerStrength <= 0.0) return vec2(0.0);
   vec4 clip = projectionMatrix * viewPosition;
@@ -115,6 +120,41 @@ vec2 dmRepel(vec4 viewPosition, float amount) {
   float falloff = 1.0 - smoothstep(0.0, uPointerRadius, dist);
   vec2 dir = dist > 0.0001 ? away / dist : vec2(0.0);
   return dir * falloff * falloff * uPointerStrength * amount * (-viewPosition.z) * 0.1;
+}
+`;
+
+/**
+ * Helpers for shapes that do their own hover. Offsets are worked out in view
+ * space (x right, y up, the camera at the origin looking down -z) and taken back
+ * to model space, so they can be added to a dot's target before its flight
+ * (arriving dots land on already displaced spots) or to a line vertex.
+ */
+export const HOVER: string = /* glsl */ `
+// A view-space vector in model space. The model-view is a rotation, a uniform
+// scale and a shift, so its inverse on vectors is the transpose over the scale squared.
+vec3 dmViewToModel(vec3 v) {
+  return transpose(mat3(modelViewMatrix)) * v / max(dot(modelViewMatrix[0].xyz, modelViewMatrix[0].xyz), 1e-8);
+}
+
+// Stirring swirl at view-space point p: a smooth vortex, counter-clockwise on
+// screen around centre (NDC). Everything is measured on the canvas, in canvas
+// heights on both axes, so the swirl is round on screen and the same size at
+// any depth. The turn is nothing right at the centre, peaks at size (canvas
+// heights) at about 45% of reach and dies out smoothly at reach. The result is
+// a view-space offset (world units at p's depth) parallel to the screen.
+vec3 dmSwirl(vec3 p, vec2 centre, float reach, float size) {
+  float depth = -p.z;
+  if (depth <= 1e-3 || reach <= 0.0) return vec3(0.0);
+  vec2 scale = vec2(projectionMatrix[0][0], projectionMatrix[1][1]);
+  // NDC spans two canvas widths across and two heights up; scale.y / scale.x is width / height.
+  vec2 offset = (scale * p.xy / depth - centre) * vec2(scale.y / scale.x, 1.0) * 0.5;
+  float s = length(offset) / reach;
+  if (s >= 1.0) return vec3(0.0);
+  float fall = 1.0 - s * s;
+  // s * (1 - s^2)^2 peaks at 16 / (25 * sqrt(5)) when s = 1 / sqrt(5); 3.4939 brings that peak to 1.
+  vec2 turn = vec2(-offset.y, offset.x) * (3.4939 * size * fall * fall / reach);
+  // One canvas height is 2 * depth / scale.y world units at this depth.
+  return vec3(turn * (2.0 * depth / scale.y), 0.0);
 }
 `;
 
@@ -136,8 +176,10 @@ vec3 dmRamp(float height) {
 /**
  * Builds a dot vertex shader. `declarations` holds the shape's own uniforms and
  * attributes; `body` must define `vec3 dmShapeDot(out float alpha, out float scale)`.
+ * With `ownHover`, the shape adds its hover offset to the target itself and the
+ * generic `dmRepel` push is left out.
  */
-export function dotVertexShader(declarations: string, body: string) {
+export function dotVertexShader(declarations: string, body: string, ownHover = false) {
   return /* glsl */ `
 ${SHARED_UNIFORMS}
 attribute vec3 aCloud;
@@ -146,6 +188,7 @@ varying float vAlpha;
 varying float vHeight;
 ${HELPERS}
 ${MORPH}
+${HOVER}
 ${RAMP_VERTEX}
 ${declarations}
 ${body}
@@ -156,7 +199,7 @@ void main() {
   float k = dmProgress(uPresence, aSeed);
   vec3 position3 = dmFlight(dmCloud(aCloud, aSeed), target, k, aSeed);
   vec4 view = modelViewMatrix * vec4(position3, 1.0);
-  view.xy += dmRepel(view, k);
+  ${ownHover ? '' : 'view.xy += dmRepel(view, k);'}
   gl_Position = projectionMatrix * view;
   vHeight = dmScreenHeight(gl_Position);
   gl_PointSize = uDotSize * uPixelRatio * scale * mix(uCloudDotScale, 1.0, k);
@@ -182,9 +225,10 @@ void main() {
  * Builds a line vertex shader. Lines don't fly through the cloud; they draw in
  * from their anchor (`aAlong` 0) to their tip (`aAlong` 1) once the dots have
  * mostly landed, and retract the same way. `body` must define
- * `vec3 dmShapeLine(out float alpha)`.
+ * `vec3 dmShapeLine(out float alpha)`. With `ownHover`, the returned position
+ * already includes the shape's hover and the generic `dmRepel` push is left out.
  */
-export function lineVertexShader(declarations: string, body: string) {
+export function lineVertexShader(declarations: string, body: string, ownHover = false) {
   return /* glsl */ `
 ${SHARED_UNIFORMS}
 attribute float aAlong;
@@ -195,6 +239,7 @@ varying float vReveal;
 varying float vHeight;
 ${HELPERS}
 ${MORPH}
+${HOVER}
 ${RAMP_VERTEX}
 ${declarations}
 ${body}
@@ -202,7 +247,7 @@ void main() {
   float alpha = 1.0;
   vec3 position3 = dmShapeLine(alpha);
   vec4 view = modelViewMatrix * vec4(position3, 1.0);
-  view.xy += dmRepel(view, aAlong);
+  ${ownHover ? '' : 'view.xy += dmRepel(view, aAlong);'}
   gl_Position = projectionMatrix * view;
   vHeight = dmScreenHeight(gl_Position);
   vAlpha = alpha;
