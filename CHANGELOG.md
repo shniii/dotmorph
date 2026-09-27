@@ -6,6 +6,8 @@ All notable changes to `dotmorph` are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-27
+
 ### Changed
 
 - Hover replaces the old pointer push. Each shape now answers a hovering
@@ -63,9 +65,9 @@ All notable changes to `dotmorph` are documented here. The format follows
   and `uHoverReach` uniforms and the `dmViewToModel` and `dmSwirl`
   helpers.
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-09-26
 
-First public release. Set the date when it is published.
+First public release.
 
 ### Added
 
@@ -84,5 +86,6 @@ First public release. Set the date when it is published.
   palettes.
 - Pointer interaction that pushes dots and lines aside.
 
-[Unreleased]: https://github.com/shniii/dotmorph/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/shniii/dotmorph/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/shniii/dotmorph/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/shniii/dotmorph/releases/tag/v0.1.0

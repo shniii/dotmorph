@@ -1,6 +1,6 @@
 {
   "name": "dotmorph",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Dots that morph between shapes through a swirling cloud. WebGL on three.js, with a React component.",
   "type": "module",
   "license": "MIT",
