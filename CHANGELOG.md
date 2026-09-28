@@ -6,6 +6,26 @@ All notable changes to `dotmorph` are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-28
+
+### Changed
+
+- The built-in palettes get rich, multi-colour backgrounds again: a glow of
+  several colours arching up from just below the bottom edge and fading to
+  near-white (or deep navy for `midnight`) by about the middle of the canvas.
+  `aurora`, the default, is a warm sunrise again (violet, pink, apricot and
+  cream) with purple dots rising to hot pink. Every palette's dot colours
+  changed with it; see the table in docs/API.md.
+- `paletteBackground()` is unchanged and still builds a simpler glow from two
+  colours for your own palettes.
+
+### Fixed
+
+- The published type declarations use `.js` extensions in their relative
+  imports, so they resolve under `moduleResolution` `node16`/`nodenext`.
+  Before, every dotmorph type silently became `any` there. `dotmorph/react`
+  types also resolve under the legacy `node10` setting.
+
 ## [0.2.0] - 2026-09-27
 
 ### Changed
@@ -86,6 +106,7 @@ First public release.
   palettes.
 - Pointer interaction that pushes dots and lines aside.
 
-[Unreleased]: https://github.com/shniii/dotmorph/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/shniii/dotmorph/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/shniii/dotmorph/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/shniii/dotmorph/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/shniii/dotmorph/releases/tag/v0.1.0

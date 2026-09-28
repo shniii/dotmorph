@@ -8,9 +8,9 @@ WebGL on three.js, with a React component. Made by [Shnyar](https://x.com/shnull
 
 [Live demo and playground](https://dotmorph.shni.me) · [GitHub](https://github.com/shniii/dotmorph) · [API reference](https://github.com/shniii/dotmorph/blob/main/docs/API.md) · [Recipes](https://github.com/shniii/dotmorph/blob/main/docs/RECIPES.md)
 
-[![npm](https://img.shields.io/npm/v/dotmorph?color=22c486&label=npm)](https://www.npmjs.com/package/dotmorph)
-[![license](https://img.shields.io/npm/l/dotmorph?color=6d3cf2)](https://github.com/shniii/dotmorph/blob/main/LICENSE)
-[![types](https://img.shields.io/npm/types/dotmorph?color=2d8cf0)](https://www.npmjs.com/package/dotmorph)
+[![npm](https://img.shields.io/npm/v/dotmorph?color=ff1486&label=npm)](https://www.npmjs.com/package/dotmorph)
+[![license](https://img.shields.io/npm/l/dotmorph?color=850fff)](https://github.com/shniii/dotmorph/blob/main/LICENSE)
+[![types](https://img.shields.io/npm/types/dotmorph?color=2b9ff2)](https://www.npmjs.com/package/dotmorph)
 
 <img src="https://dotmorph.shni.me/demo.webp" alt="dotmorph cycling through a burst, a globe, a wave and a fan, the dots gathering in a swirling cloud between each shape" width="800" />
 

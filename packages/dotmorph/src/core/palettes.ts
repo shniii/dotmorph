@@ -37,23 +37,48 @@ export function paletteBackground(top: string, bottom: string, dark = false): st
   return `${shape}, ${mixHex(bottom, top, 0.35)} 0%, ${mixHex(top, '#ffffff', 0.2)} 20%, ${mixHex(top, '#ffffff', 0.6)} 40%, ${mixHex(top, '#ffffff', 0.86)} 58%, ${paper} 78%)`;
 }
 
-function palette(top: string, bottom: string, extra: Partial<Palette> = {}): Palette {
-  return { top, bottom, ...extra, background: paletteBackground(top, bottom, extra.dark) };
-}
+/** The glow every built-in background shares: an arch rising from just below the bottom edge. */
+const GLOW = 'radial-gradient(136% 116% at 50% 114%';
 
 export const PALETTES: Record<PaletteName, Palette> = {
-  /** Green into violet, like northern lights. */
-  aurora: palette('#22c486', '#6d3cf2'),
-  /** Azure into deep indigo. */
-  ocean: palette('#2d8cf0', '#1d2a9c'),
-  /** Amber into red. */
-  ember: palette('#ffa43a', '#e0314f'),
-  /** Aqua into blue. */
-  mint: palette('#2fd3c0', '#1768c9'),
-  /** Rose into plum. */
-  rose: palette('#ff5c8a', '#9b1c7a'),
-  /** Ice into violet, on a dark night. */
-  midnight: palette('#9af0ff', '#8a63ff', { dark: true, rampEnd: 0.9 }),
+  /** Sunrise: violet on the horizon, then pink, apricot and cream; purple dots rising to hot pink. */
+  aurora: {
+    top: '#ff1486',
+    bottom: '#850fff',
+    background: `${GLOW}, #a462ff 0%, #fc6abc 20%, #ffae30 36%, #fdfaff 60%)`,
+  },
+  /** Morning sea: deep blue under sky blue, fading to pale air. */
+  ocean: {
+    top: '#2b9ff2',
+    bottom: '#1830b0',
+    background: `${GLOW}, #017de6 0%, #49b0fa 16%, #92d0ff 32%, #f5f9ff 64%)`,
+  },
+  /** Firelight: red-orange under orange and peach; crimson dots rising to amber. */
+  ember: {
+    top: '#f98316',
+    bottom: '#d01040',
+    background: `${GLOW}, #ff5c1f 0%, #ff914d 20%, #fffaf3 68%)`,
+  },
+  /** Lagoon: teal under aqua, fading to a cool white; deep-blue dots rising to teal. */
+  mint: {
+    top: '#12b39c',
+    bottom: '#0b56a0',
+    background: `${GLOW}, #00a890 0%, #5de2c4 16%, #a4f5dd 36%, #f5fffb 68%)`,
+  },
+  /** Sunset: coral into pink into lilac; plum dots rising to rose. */
+  rose: {
+    top: '#d8378e',
+    bottom: '#7a1f8a',
+    background: `${GLOW}, #ff7a6a 0%, #ff6f9e 16%, #e890e0 32%, #f5b8eb 48%, #fffafd 68%)`,
+  },
+  /** Deep night: a periwinkle glow on the horizon rising through purple into navy; ice-white dots. */
+  midnight: {
+    top: '#dde2ff',
+    bottom: '#9ee7ff',
+    rampEnd: 0.9,
+    dark: true,
+    background: `${GLOW}, #a8b8ff 0%, #7a48e4 20%, #3a1a9a 40%, #1c006c 60%, #00004c 88%)`,
+  },
 };
 
 export function resolvePalette(palette: PaletteName | Palette): Palette {

@@ -48,8 +48,8 @@ export function LogoMark({ size = 44 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 44 44" aria-hidden="true" className="logo-mark">
       <defs>
         <linearGradient id="lm" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#22c486" />
-          <stop offset="1" stopColor="#6d3cf2" />
+          <stop offset="0" stopColor="#ff1486" />
+          <stop offset="1" stopColor="#850fff" />
         </linearGradient>
       </defs>
       {dots.map(([x, y, r], i) => (

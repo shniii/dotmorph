@@ -8,9 +8,9 @@ An open-source WebGL effect on three.js, with a React component and a playground
 
 [**Live demo and playground**](https://dotmorph.shni.me) · [npm](https://www.npmjs.com/package/dotmorph) · [API reference](docs/API.md) · [Recipes](docs/RECIPES.md)
 
-[![npm](https://img.shields.io/npm/v/dotmorph?color=22c486&label=npm)](https://www.npmjs.com/package/dotmorph)
+[![npm](https://img.shields.io/npm/v/dotmorph?color=ff1486&label=npm)](https://www.npmjs.com/package/dotmorph)
 [![CI](https://github.com/shniii/dotmorph/actions/workflows/ci.yml/badge.svg)](https://github.com/shniii/dotmorph/actions/workflows/ci.yml)
-[![license](https://img.shields.io/github/license/shniii/dotmorph?color=6d3cf2)](LICENSE)
+[![license](https://img.shields.io/github/license/shniii/dotmorph?color=850fff)](LICENSE)
 
 <img src="site/public/demo.webp" alt="dotmorph cycling through a burst, a globe, a wave and a fan, the dots gathering in a swirling cloud between each shape" width="800" />
 
@@ -90,7 +90,7 @@ Each dot's own progress is shifted by a random amount (`stagger`), and it travel
 
 ### Colour
 
-Dots and lines are coloured by their height on the *screen*, from the palette's `bottom` colour to its `top` colour, so the gradient stays fixed to the viewport while the shapes move through it. Each palette's CSS background is generated from the same two colours (`paletteBackground()`), so your own palettes get one too. Changing palettes fades the colours over 0.7 s.
+Dots and lines are coloured by their height on the *screen*, from the palette's `bottom` colour to its `top` colour, so the gradient stays fixed to the viewport while the shapes move through it. Each built-in palette comes with a matching CSS background: a glow of several colours arching up from the bottom edge. For your own palettes, `paletteBackground()` builds one from the two ramp colours. Changing palettes fades the colours over 0.7 s.
 
 ## Repository
 
