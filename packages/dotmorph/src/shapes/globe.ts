@@ -1,7 +1,7 @@
 import { BufferGeometry, Euler, Float32BufferAttribute, LineSegments, Matrix3, Matrix4, Points, Vector2, Vector3 } from 'three';
-import { Shape, type Vec3Like } from '../core/Shape';
-import { HoverSwirl } from '../core/hover';
-import { clamp, createRandom } from '../core/random';
+import { Shape, type Vec3Like } from '../core/Shape.js';
+import { HoverSwirl } from '../core/hover.js';
+import { clamp, createRandom } from '../core/random.js';
 
 /**
  * Parameters of the globe: a large tilted sphere sitting low in the frame,

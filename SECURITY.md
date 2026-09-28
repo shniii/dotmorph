@@ -6,7 +6,8 @@ Security fixes land in the latest minor release of `dotmorph`.
 
 | version | supported |
 | --- | --- |
-| 0.1.x | yes |
+| 0.2.x | yes |
+| < 0.2 | no |
 
 ## Reporting a vulnerability
 
@@ -22,10 +23,10 @@ advisory is published with credit to you unless you prefer otherwise.
 
 ## How releases are protected
 
-- The first release, 0.1.0, was published by the maintainer from their own
-  machine with two-factor authentication, because npm only allows trusted
-  publishing for a package that already exists. It has no provenance statement.
-- From 0.1.1 on, releases are published from GitHub Actions with
+- 0.1.0 and 0.2.0 were published by the maintainer from their own machine
+  with two-factor authentication. They have no provenance statement.
+- Once trusted publishing is set up on npm, releases are published from GitHub
+  Actions with
   [trusted publishing](https://docs.npmjs.com/trusted-publishers) (OpenID
   Connect), so no long-lived npm token exists in the repository or its settings.
   The publish job runs in a protected `npm` environment with install scripts

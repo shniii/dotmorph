@@ -4,7 +4,7 @@
 
 **Dots that morph between shapes through a swirling cloud.**
 
-WebGL on three.js, with a React component. Made by [Shnyar](https://x.com/shnulli).
+WebGL on three.js, with a React component. Made by [Shnyar](https://x.com/shnulli) · [GitHub @shniii](https://github.com/shniii).
 
 [Live demo and playground](https://dotmorph.shni.me) · [GitHub](https://github.com/shniii/dotmorph) · [API reference](https://github.com/shniii/dotmorph/blob/main/docs/API.md) · [Recipes](https://github.com/shniii/dotmorph/blob/main/docs/RECIPES.md)
 
@@ -22,7 +22,7 @@ WebGL on three.js, with a React component. Made by [Shnyar](https://x.com/shnull
 npm install dotmorph three
 ```
 
-`three` is a peer dependency (0.163 or newer). `react` is an optional peer, needed only for `dotmorph/react`. With TypeScript, also add the three.js types:
+dotmorph is ESM only. `three` is a peer dependency (0.163 or newer). `react` is an optional peer, needed only for `dotmorph/react`. With TypeScript, also add the three.js types:
 
 ```bash
 npm install -D @types/three

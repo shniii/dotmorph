@@ -1,11 +1,11 @@
 import { Color, PerspectiveCamera, Scene, Vector2, Vector3, WebGLRenderer } from 'three';
-import { clamp } from './random';
-import { paletteColors, resolvePalette, type Palette, type PaletteColors, type PaletteName } from './palettes';
-import { SHAPE_NAMES, definedOnly, type CloudSettings, type ShapeHandle, type ShapeName, type SharedUniforms, type Vec3Like } from './Shape';
-import { BurstShape, type BurstParams } from '../shapes/burst';
-import { GlobeShape, type GlobeParams } from '../shapes/globe';
-import { WaveShape, type WaveParams } from '../shapes/wave';
-import { FanShape, type FanParams } from '../shapes/fan';
+import { clamp } from './random.js';
+import { paletteColors, resolvePalette, type Palette, type PaletteColors, type PaletteName } from './palettes.js';
+import { SHAPE_NAMES, definedOnly, type CloudSettings, type ShapeHandle, type ShapeName, type SharedUniforms, type Vec3Like } from './Shape.js';
+import { BurstShape, type BurstParams } from '../shapes/burst.js';
+import { GlobeShape, type GlobeParams } from '../shapes/globe.js';
+import { WaveShape, type WaveParams } from '../shapes/wave.js';
+import { FanShape, type FanParams } from '../shapes/fan.js';
 
 /** Engine-wide look and feel. Every value can be changed later with `setSettings`. */
 export interface EngineSettings {

@@ -7,8 +7,8 @@ import {
   type Camera,
   type IUniform,
 } from 'three';
-import { DOT_FRAGMENT, LINE_FRAGMENT, dotVertexShader, lineVertexShader } from './glsl';
-import { createRandom } from './random';
+import { DOT_FRAGMENT, LINE_FRAGMENT, dotVertexShader, lineVertexShader } from './glsl.js';
+import { createRandom } from './random.js';
 
 export const SHAPE_NAMES = ['burst', 'globe', 'wave', 'fan'] as const;
 export type ShapeName = (typeof SHAPE_NAMES)[number];

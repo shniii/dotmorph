@@ -1,7 +1,7 @@
 import { BufferGeometry, Float32BufferAttribute, LineSegments, Points, Vector2, Vector3 } from 'three';
-import { Shape, type Vec3Like } from '../core/Shape';
-import { TipSprings, ViewMirror, springSlices, springVelocity } from '../core/hover';
-import { clamp, createRandom } from '../core/random';
+import { Shape, type Vec3Like } from '../core/Shape.js';
+import { TipSprings, ViewMirror, springSlices, springVelocity } from '../core/hover.js';
+import { clamp, createRandom } from '../core/random.js';
 
 /**
  * Parameters of the wave: a ribbon of vertical stems standing along a path that

@@ -735,6 +735,9 @@ a {
   .showcase {
     aspect-ratio: 4 / 5;
   }
+  .card--preview {
+    aspect-ratio: 4 / 3;
+  }
   .tab {
     padding: 7px 10px;
   }

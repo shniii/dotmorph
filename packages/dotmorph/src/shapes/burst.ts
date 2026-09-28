@@ -1,7 +1,7 @@
 import { BufferGeometry, Float32BufferAttribute, LineSegments, Points, Vector2, Vector3 } from 'three';
-import { Shape, type Vec3Like } from '../core/Shape';
-import { TipSprings, ViewMirror, drift1, noise2, springSlices, springVelocity } from '../core/hover';
-import { clamp, createRandom } from '../core/random';
+import { Shape, type Vec3Like } from '../core/Shape.js';
+import { TipSprings, ViewMirror, drift1, noise2, springSlices, springVelocity } from '../core/hover.js';
+import { clamp, createRandom } from '../core/random.js';
 
 /** Parameters of the burst: rays fanning up from a point below the frame, a dot on every tip. */
 export interface BurstParams {

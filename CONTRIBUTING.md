@@ -20,7 +20,7 @@ shapes are in `src/shapes/`: `burst.ts`, `globe.ts`, `wave.ts` and `fan.ts`.
 
 ## Setup
 
-Use Node 22 (see `.nvmrc`) and npm 10 or newer.
+Use Node 24 (see `.nvmrc`) and npm 11 or newer.
 
 ```bash
 npm install
@@ -65,7 +65,11 @@ Open an issue before large changes so we can agree on the approach.
    "Unreleased" notes in `CHANGELOG.md` under the new version.
 2. Commit, then publish a GitHub release tagged `vX.Y.Z`.
 3. The Release workflow type-checks, builds, lints and publishes to npm with
-   trusted publishing and provenance. No npm token is needed.
+   trusted publishing and provenance. No npm token is needed. This needs a
+   one-time setup on npmjs.com: package settings -> Trusted publishing ->
+   GitHub Actions, repository `shniii/dotmorph`, workflow `release.yml`,
+   environment `npm`. Until then, publish from your own machine with
+   `npm publish -w dotmorph --access public`.
 
 ## License
 

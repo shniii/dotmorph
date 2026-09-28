@@ -1,7 +1,7 @@
 import { BufferGeometry, Float32BufferAttribute, LineSegments, Points, Vector2, Vector3 } from 'three';
-import { Shape } from '../core/Shape';
-import { HoverSwirl } from '../core/hover';
-import { clamp, createRandom } from '../core/random';
+import { Shape } from '../core/Shape.js';
+import { HoverSwirl } from '../core/hover.js';
+import { clamp, createRandom } from '../core/random.js';
 
 /**
  * Parameters of the fan: a bow tie of smooth strands. Every strand leaves a

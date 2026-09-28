@@ -1,6 +1,6 @@
 # dotmorph API reference
 
-This is the complete reference for `dotmorph` 0.1.0. For a quick start, see the [README](../README.md). For copy-paste examples, see [Recipes](RECIPES.md). You can try every setting in the [playground](https://dotmorph.shni.me).
+This is the complete reference for `dotmorph` 0.2. For a quick start, see the [README](../README.md). For copy-paste examples, see [Recipes](RECIPES.md). You can try every setting in the [playground](https://dotmorph.shni.me).
 
 ## Contents
 
@@ -745,7 +745,7 @@ It draws `strands × 2` dots and `strands × (samples − 1) × 2` line vertices
 
 ### What is and isn't supported
 
-**In 0.1.0 you can't add your own shape to the engine.** `ShapeName` is a closed union (`'burst' | 'globe' | 'wave' | 'fan'`). `Shape.name` must be one of those four names. `DotMorphEngine` creates its four shapes itself, in its constructor, and there is no API to register, replace or remove one.
+**You can't add your own shape to the engine yet.** `ShapeName` is a closed union (`'burst' | 'globe' | 'wave' | 'fan'`). `Shape.name` must be one of those four names. `DotMorphEngine` creates its four shapes itself, in its constructor, and there is no API to register, replace or remove one.
 
 `Shape` is exported for two reasons:
 

@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
-import { DotMorphEngine, type EngineOptions, type EngineSettings } from './core/Engine';
-import type { Palette, PaletteName } from './core/palettes';
-import type { ShapeName } from './core/Shape';
+import { DotMorphEngine, type EngineOptions, type EngineSettings } from './core/Engine.js';
+import type { Palette, PaletteName } from './core/palettes.js';
+import type { ShapeName } from './core/Shape.js';
 
-export { DotMorphEngine } from './core/Engine';
-export type { Palette, PaletteName } from './core/palettes';
-export type { ShapeName } from './core/Shape';
+export { DotMorphEngine } from './core/Engine.js';
+export type { Palette, PaletteName } from './core/palettes.js';
+export type { ShapeName } from './core/Shape.js';
 
 export interface DotMorphProps {
   /** Shape to show: 'burst', 'globe', 'wave' or 'fan' (or 0 to 3). Changing it runs the morph. */
