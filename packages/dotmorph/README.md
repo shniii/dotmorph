@@ -4,7 +4,7 @@
 
 **Dots that morph between shapes through a swirling cloud.**
 
-WebGL on three.js, with a React component. Made by [Shnyar](https://x.com/shnulli) · [GitHub @shniii](https://github.com/shniii).
+WebGL on three.js, with a React component. Made by [Shnyar](https://x.com/shinnoo22) · [GitHub @shniii](https://github.com/shniii).
 
 [Live demo and playground](https://dotmorph.shni.me) · [GitHub](https://github.com/shniii/dotmorph) · [API reference](https://github.com/shniii/dotmorph/blob/main/docs/API.md) · [Recipes](https://github.com/shniii/dotmorph/blob/main/docs/RECIPES.md)
 

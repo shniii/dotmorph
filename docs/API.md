@@ -1033,4 +1033,4 @@ From `dotmorph/react`: `DotMorph`, `DotMorphProps`, `usePrefersReducedMotion`, p
 
 ## Credits
 
-Made by Shnyar: [X @shnulli](https://x.com/shnulli) · [GitHub @shniii](https://github.com/shniii). Live demo and playground: [dotmorph.shni.me](https://dotmorph.shni.me).
+Made by Shnyar: [X @shinnoo22](https://x.com/shinnoo22) · [GitHub @shniii](https://github.com/shniii). Live demo and playground: [dotmorph.shni.me](https://dotmorph.shni.me).

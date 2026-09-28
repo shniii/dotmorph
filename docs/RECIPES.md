@@ -545,4 +545,4 @@ engine.resize();
 
 ---
 
-Made by Shnyar: [X @shnulli](https://x.com/shnulli) · [GitHub @shniii](https://github.com/shniii) · [dotmorph.shni.me](https://dotmorph.shni.me)
+Made by Shnyar: [X @shinnoo22](https://x.com/shinnoo22) · [GitHub @shniii](https://github.com/shniii) · [dotmorph.shni.me](https://dotmorph.shni.me)

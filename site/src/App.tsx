@@ -10,7 +10,7 @@ import avatar from './assets/shnyar.webp';
 
 const GITHUB = 'https://github.com/shniii/dotmorph';
 const NPM = 'https://www.npmjs.com/package/dotmorph';
-const AUTHOR_X = 'https://x.com/shnulli';
+const AUTHOR_X = 'https://x.com/shinnoo22';
 const AUTHOR_GITHUB = 'https://github.com/shniii';
 
 const REACT_USAGE = `import { DotMorph } from 'dotmorph/react';

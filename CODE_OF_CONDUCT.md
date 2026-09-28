@@ -11,7 +11,7 @@ space.
 ## Reporting
 
 If someone's behaviour worries you, contact the maintainer, Shnyar, privately:
-send a direct message to [@shnulli on X](https://x.com/shnulli), or open a
+send a direct message to [@shinnoo22 on X](https://x.com/shinnoo22), or open a
 [private security advisory](https://github.com/shniii/dotmorph/security/advisories/new)
 if the matter should stay confidential. Reports are handled discreetly.
 The maintainer may remove content, lock threads or block people who break this

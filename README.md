@@ -14,7 +14,7 @@ An open-source WebGL effect on three.js, with a React component and a playground
 
 <img src="site/public/demo.webp" alt="dotmorph cycling through a burst, a globe, a wave and a fan, the dots gathering in a swirling cloud between each shape" width="800" />
 
-Made by [**Shnyar**](https://x.com/shnulli)
+Made by [**Shnyar**](https://x.com/shinnoo22)
 
 </div>
 
@@ -113,7 +113,7 @@ Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) fi
 
 ## Credits
 
-Made by **Shnyar**: [X @shnulli](https://x.com/shnulli) · [GitHub @shniii](https://github.com/shniii).
+Made by **Shnyar**: [X @shinnoo22](https://x.com/shinnoo22) · [GitHub @shniii](https://github.com/shniii).
 
 Built with [three.js](https://threejs.org). The playground uses [DialKit](https://github.com/joshpuckett/dialkit).
 
